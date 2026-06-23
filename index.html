@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, touch-action: none">
+<title>Мажор 2048</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #2B2D23;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.game-wrapper {
+  width: 100%;
+  max-width: 420px;
+  padding: 16px;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #E6D7B8;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  letter-spacing: 2px;
+}
+.scores {
+  display: flex;
+  gap: 8px;
+}
+.score-box {
+  background: #4A5548;
+  border: 2px solid #8B7355;
+  border-radius: 8px;
+  padding: 6px 14px;
+  text-align: center;
+  min-width: 70px;
+}
+.score-label {
+  font-size: 10px;
+  color: #8B7355;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.score-value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #E6D7B8;
+}
+.timer-box {
+  background: #4A5548;
+  border: 2px solid #8B7355;
+  border-radius: 8px;
+  padding: 6px 14px;
+  text-align: center;
+  min-width: 70px;
+}
+.timer-value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #E6D7B8;
+  font-variant-numeric: tabular-nums;
+}
+.next-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #8B7355;
+  font-size: 13px;
+}
+.next-tile-preview {
+  background: #4A5548;
+  border: 1px solid #8B7355;
+  border-radius: 4px;
+  padding: 4px 10px;
+  color: #E6D7B8;
+  font-weight: bold;
+  font-size: 15px;
+}
+.board-container {
+  background: #4A5548;
+  border: 3px solid #8B7355;
+  border-radius: 12px;
+  padding: 6px;
+  position: relative;
+  touch-action: none;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: 5px;
+  position: relative;
+}
+.cell {
+  aspect-ratio: 1;
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+}
+.tile-layer {
+  position: absolute;
+  top: 6px; left: 6px; right: 6px; bottom: 6px;
+  pointer-events: none;
+}
+.tile {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #E6D7B8;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  transition: transform 0.12s ease-out;
+  will-change: transform;
+}
+.tile.new-tile {
+  animation: popIn 0.2s ease-out;
+}
+.tile.merged-tile {
+  animation: mergePop 0.25s ease-out;
+  z-index: 2;
+}
+@keyframes popIn {
+  0% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  60% { transform: translate(var(--tx), var(--ty)) scale(1.15); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 1; }
+}
+@keyframes mergePop {
+  0% { transform: translate(var(--tx), var(--ty)) scale(1); }
+  30% { transform: translate(var(--tx), var(--ty)) scale(1.3); }
+  100% { transform: translate(var(--tx), var(--ty)) scale(1); }
+}
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.btn {
+  flex: 1;
+  padding: 12px 0;
+  background: #8B7F47;
+  border: 2px solid #8B7355;
+  border-radius: 8px;
+  color: #E6D7B8;
+  font-size: 15px;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s;
+}
+.btn:active {
+  background: #6B5F37;
+}
+.btn-top {
+  background: #5A4F38;
+  border-color: #8B7355;
+}
+.leaderboard {
+  background: #4A5548;
+  border: 2px solid #8B7355;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 12px;
+  display: none;
+}
+.leaderboard.show { display: block; }
+.leaderboard h3 {
+  color: #E6D7B8;
+  text-align: center;
+  margin-bottom: 8px;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+.leaderboard table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.leaderboard th, .leaderboard td {
+  color: #E6D7B8;
+  padding: 4px 8px;
+  text-align: center;
+  font-size: 13px;
+  border-bottom: 1px solid #8B7355;
+}
+.leaderboard th {
+  color: #8B7355;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.game-over-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+}
+.game-over-overlay.show { display: flex; }
+.game-over-dialog {
+  background: #4A5548;
+  border: 2px solid #8B7355;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  max-width: 300px;
+  width: 90%;
+}
+.game-over-dialog h2 {
+  color: #E6D7B8;
+  margin-bottom: 8px;
+  font-size: 22px;
+}
+.game-over-dialog .final-score {
+  color: #8B7355;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.game-over-dialog input {
+  width: 100%;
+  padding: 8px;
+  background: #2B2D23;
+  border: 1px solid #8B7355;
+  border-radius: 6px;
+  color: #E6D7B8;
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 10px;
+  font-family: inherit;
+}
+.game-over-dialog .btn {
+  width: 100%;
+}
+</style>
+</head>
+<body>
+
+<div class="game-wrapper">
+  <div class="header">
+    <div class="title">МАЖОР</div>
+    <div class="scores">
+      <div class="timer-box">
+        <div class="score-label">Время</div>
+        <div class="timer-value" id="timer">00:00</div>
+      </div>
+      <div class="score-box">
+        <div class="score-label">Уровень</div>
+        <div class="score-value" id="levelDisplay">10₽</div>
+      </div>
+    </div>
+  </div>
+  <div class="next-tile">
+    Следующий: <span class="next-tile-preview" id="nextTilePreview">10₽</span>
+  </div>
+  <div class="board-container" id="boardContainer">
+    <div class="board" id="board"></div>
+    <div class="tile-layer" id="tileLayer"></div>
+  </div>
+  <div class="controls">
+    <button class="btn btn-top" onclick="toggleLeaderboard()">ТОП</button>
+    <button class="btn" onclick="newGame()">ЗАНОВО</button>
+  </div>
+  <div class="leaderboard" id="leaderboard">
+    <h3>🏆 Топ игроков</h3>
+    <table>
+      <thead><tr><th>#</th><th>Имя</th><th>Уровень</th><th>Время</th></tr></thead>
+      <tbody id="leaderboardBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="game-over-overlay" id="gameOverOverlay">
+  <div class="game-over-dialog">
+    <h2>Игра окончена</h2>
+    <div class="final-score" id="finalScore"></div>
+    <input type="text" id="playerNameInput" placeholder="Твоё имя" maxlength="20">
+    <button class="btn" onclick="saveScore()">Сохранить</button>
+  </div>
+</div>
+
+<script>
+// ---- Конфигурация ----
+const LEVELS = ['10₽','50₽','100₽','200₽','500₽','1000₽','2000₽','5000₽','Чемодан','Слиток','Авто','Квартира','Банк','Магнат','Империя'];
+const TILE_COLORS = [
+  null,                   // 0 — нет плитки
+  'rgba(139,115,85,0.7)', // 10₽
+  'rgba(139,115,85,0.75)',
+  'rgba(139,115,85,0.8)',
+  'rgba(139,115,85,0.85)',
+  'rgba(139,127,71,0.85)',
+  'rgba(139,127,71,0.9)',
+  'rgba(180,160,100,0.9)',
+  'rgba(180,150,70,0.9)',
+  'rgba(200,160,50,0.9)',
+  'rgba(220,170,40,0.9)',
+  'rgba(230,180,30,0.9)',
+  'rgba(240,190,20,0.9)',
+  'rgba(250,200,10,0.95)',
+  'rgba(255,210,0,1)',
+];
+const TEXT_COLORS = [
+  null, '#E6D7B8','#E6D7B8','#E6D7B8','#E6D7B8',
+  '#E6D7B8','#E6D7B8','#2B2D23','#2B2D23','#2B2D23',
+  '#2B2D23','#2B2D23','#2B2D23','#2B2D23','#2B2D23'
+];
+
+// ---- Состояние игры ----
+let board = [];         // board[row][col] = уровень (0-15) или 0
+let tileIdCounter = 0;
+let tiles = [];         // {id, level, row, col, merged, isNew}
+let score = 0;
+let maxLevel = 1;
+let gameOver = false;
+let timerSeconds = 0;
+let timerInterval = null;
+let nextTileLevel = 1;  // уровень следующей плитки (1 или 2)
+
+// ---- Инициализация ----
+function initBoard() {
+  board = [];
+  for (let r = 0; r < 5; r++) {
+    board[r] = [0,0,0,0,0];
+  }
+  tiles = [];
+  tileIdCounter = 0;
+  score = 0;
+  maxLevel = 1;
+  gameOver = false;
+  timerSeconds = 0;
+  nextTileLevel = Math.random() < 0.7 ? 1 : 2;
+  updateTimer();
+  updateLevelDisplay();
+  updateNextTile();
+  document.getElementById('gameOverOverlay').classList.remove('show');
+}
+
+function spawnTile(level, row, col) {
+  board[row][col] = level;
+  let t = { id: ++tileIdCounter, level: level, row: row, col: col, merged: false, isNew: true };
+  tiles.push(t);
+  return t;
+}
+
+function spawnRandom() {
+  let empty = [];
+  for (let r = 0; r < 5; r++)
+    for (let c = 0; c < 5; c++)
+      if (board[r][c] === 0) empty.push({r,c});
+  if (empty.length === 0) return null;
+  let {r,c} = empty[Math.floor(Math.random() * empty.length)];
+  let lv = nextTileLevel;
+  nextTileLevel = Math.random() < 0.7 ? 1 : 2;
+  updateNextTile();
+  return spawnTile(lv, r, c);
+}
+
+function newGame() {
+  if (timerInterval) clearInterval(timerInterval);
+  initBoard();
+  spawnRandom();
+  spawnRandom();
+  renderAll();
+  startTimer();
+}
+
+function startTimer() {
+  timerSeconds = 0;
+  updateTimer();
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timerSeconds++;
+    updateTimer();
+  }, 1000);
+}
+
+function updateTimer() {
+  let m = Math.floor(timerSeconds / 60);
+  let s = timerSeconds % 60;
+  document.getElementById('timer').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function updateLevelDisplay() {
+  document.getElementById('levelDisplay').textContent = LEVELS[maxLevel - 1] || '10₽';
+}
+
+function updateNextTile() {
+  document.getElementById('nextTilePreview').textContent = LEVELS[nextTileLevel - 1];
+}
+
+// ---- Движение ----
+function canMove() {
+  for (let r = 0; r < 5; r++)
+    for (let c = 0; c < 5; c++) {
+      if (board[r][c] === 0) return true;
+      if (c < 4 && board[r][c] === board[r][c+1]) return true;
+      if (r < 4 && board[r][c] === board[r+1][c]) return true;
+    }
+  return false;
+}
+
+function moveTiles(dr, dc) {
+  if (gameOver) return;
+  
+  // Сбрасываем флаги
+  tiles.forEach(t => { t.merged = false; t.isNew = false; });
+  
+  let moved = false;
+  let mergedThisTurn = new Set();
+  
+  // Порядок обхода: если двигаем вправо/вниз — с конца
+  let rowOrder = dr === 1 ? [4,3,2,1,0] : [0,1,2,3,4];
+  let colOrder = dc === 1 ? [4,3,2,1,0] : [0,1,2,3,4];
+  
+  // Строим карту id→tile
+  let tileById = {};
+  tiles.forEach(t => tileById[t.id] = t);
+  
+  // Очищаем board
+  for (let r = 0; r < 5; r++)
+    for (let c = 0; c < 5; c++)
+      board[r][c] = 0;
+  
+  let newTiles = [];
+  let mergePairs = []; // {survivor, absorbed}
+  
+  for (let ri = 0; ri < 5; ri++) {
+    let r = rowOrder[ri];
+    let line = [];
+    // Собираем плитки строки/столбца по порядку движения
+    if (dr !== 0) {
+      // Вертикальное движение: для каждого столбца
+    }
+  }
+  
+  // Переписываю логику движения чище:
+  // Для каждой строки (dr===0) или столбца (dc===0) собираем плитки,
+  // сдвигаем к краю, мержим соседей.
+  
+  function processLine(getCell, setCell, tileList, length) {
+    // getCell(i) -> tile|null, setCell(i, tile)
+    let line = [];
+    for (let i = 0; i < length; i++) {
+      let t = getCell(i);
+      if (t) line.push(t);
+    }
+    if (line.length === 0) return false;
+    
+    // Сдвигаем к началу
+    let changed = false;
+    let i = 0;
+    while (i < line.length - 1) {
+      if (line[i].level === line[i+1].level) {
+        // Мерж
+        let survivor = line[i];
+        let absorbed = line[i+1];
+        survivor.level++;
+        survivor.merged = true;
+        if (survivor.level > maxLevel) maxLevel = survivor.level;
+        mergePairs.push({survivor, absorbed});
+        line.splice(i+1, 1);
+        changed = true;
+      }
+      i++;
+    }
+    
+    // Записываем результат
+    for (let pos = 0; pos < length; pos++) {
+      setCell(pos, pos < line.length ? line[pos] : null);
+      if (line[pos]) {
+        let t = line[pos];
+        changed = changed || t.row !== (dr!==0 ? pos : t.row) || t.col !== (dc!==0 ? pos : t.col);
+        if (dr !== 0) t.row = pos;
+        else t.col = pos;
+      }
+    }
+    return changed;
+  }
+  
+  // Обрабатываем строки или столбцы
+  let changed = false;
+  
+  if (dr !== 0) {
+    // Вертикальное движение (dr = -1 вверх, dr = 1 вниз)
+    for (let c = 0; c < 5; c++) {
+      let col = c;
+      let origin = dr === -1 ? 0 : 4;
+      let step = dr === -1 ? 1 : -1;
+      
+      // Собираем плитки в столбце в порядке движения
+      let lineTiles = [];
+      for (let i = 0; i < 5; i++) {
+        let r = origin + i * (-step); // идём от дальнего края к ближнему
+        let t = tiles.find(t => t.row === r && t.col === col && !mergePairs.some(p => p.absorbed === t));
+        if (t) lineTiles.push(t);
+      }
+      
+      // Мержим
+      let mergedInCol = new Set();
+      for (let i = 0; i < lineTiles.length - 1; i++) {
+        if (mergedInCol.has(i)) continue;
+        if (lineTiles[i].level === lineTiles[i+1].level) {
+          lineTiles[i].level++;
+          lineTiles[i].merged = true;
+          if (lineTiles[i].level > maxLevel) maxLevel = lineTiles[i].level;
+          mergePairs.push({survivor: lineTiles[i], absorbed: lineTiles[i+1]});
+          mergedInCol.add(i+1);
+        }
+      }
+      
+      // Убираем поглощённые
+      let finalLine = lineTiles.filter((_, idx) => !mergedInCol.has(idx));
+      
+      // Новые позиции
+      let targetR = dr === -1 ? 0 : 4;
+      for (let i = 0; i < finalLine.length; i++) {
+        let t = finalLine[i];
+        let newR = targetR + i * (-step);
+        if (t.row !== newR || t.col !== col) changed = true;
+        t.row = newR;
+        t.col = col;
+      }
+    }
+  } else {
+    // Горизонтальное движение (dc = -1 влево, dc = 1 вправо)
+    for (let r = 0; r < 5; r++) {
+      let row = r;
+      let origin = dc === -1 ? 0 : 4;
+      let step = dc === -1 ? 1 : -1;
+      
+      let lineTiles = [];
+      for (let i = 0; i < 5; i++) {
+        let c = origin + i * (-step);
+        let t = tiles.find(t => t.row === row && t.col === c && !mergePairs.some(p => p.absorbed === t));
+        if (t) lineTiles.push(t);
+      }
+      
+      let mergedInRow = new Set();
+      for (let i = 0; i < lineTiles.length - 1; i++) {
+        if (mergedInRow.has(i)) continue;
+        if (lineTiles[i].level === lineTiles[i+1].level) {
+          lineTiles[i].level++;
+          lineTiles[i].merged = true;
+          if (lineTiles[i].level > maxLevel) maxLevel = lineTiles[i].level;
+          mergePairs.push({survivor: lineTiles[i], absorbed: lineTiles[i+1]});
+          mergedInRow.add(i+1);
+        }
+      }
+      
+      let finalLine = lineTiles.filter((_, idx) => !mergedInRow.has(idx));
+      
+      let targetC = dc === -1 ? 0 : 4;
+      for (let i = 0; i < finalLine.length; i++) {
+        let t = finalLine[i];
+        let newC = targetC + i * (-step);
+        if (t.row !== row || t.col !== newC) changed = true;
+        t.row = row;
+        t.col = newC;
+      }
+    }
+  }
+  
+  // Удаляем поглощённые плитки
+  let absorbedIds = new Set(mergePairs.map(p => p.absorbed.id));
+  tiles = tiles.filter(t => !absorbedIds.has(t.id));
+  
+  // Обновляем board
+  for (let r = 0; r < 5; r++)
+    for (let c = 0; c < 5; c++)
+      board[r][c] = 0;
+  tiles.forEach(t => { board[t.row][t.col] = t.level; });
+  
+  if (changed) {
+    let spawned = spawnRandom();
+    renderAll();
+    updateLevelDisplay();
+    
+    if (!canMove()) {
+      gameOver = true;
+      if (timerInterval) clearInterval(timerInterval);
+      setTimeout(showGameOver, 400);
+    }
+  }
+  
+  return changed;
+}
+
+function showGameOver() {
+  document.getElementById('finalScore').textContent = 'Уровень: ' + LEVELS[maxLevel-1] + ' · Время: ' + document.getElementById('timer').textContent;
+  document.getElementById('playerNameInput').value = '';
+  document.getElementById('gameOverOverlay').classList.add('show');
+}
+
+function saveScore() {
+  let name = document.getElementById('playerNameInput').value.trim() || 'Игрок';
+  let entry = {
+    name: name,
+    level: maxLevel,
+    levelName: LEVELS[maxLevel-1],
+    time: timerSeconds,
+    timeStr: document.getElementById('timer').textContent
+  };
+  let lb = loadLeaderboard();
+  lb.push(entry);
+  lb.sort((a,b) => b.level - a.level || a.time - b.time);
+  lb = lb.slice(0, 10);
+  localStorage.setItem('major2048_leaderboard', JSON.stringify(lb));
+  document.getElementById('gameOverOverlay').classList.remove('show');
+  renderLeaderboard();
+}
+
+function loadLeaderboard() {
+  try {
+    return JSON.parse(localStorage.getItem('major2048_leaderboard') || '[]');
+  } catch(e) { return []; }
+}
+
+function renderLeaderboard() {
+  let lb = loadLeaderboard();
+  let tbody = document.getElementById('leaderboardBody');
+  tbody.innerHTML = lb.map((e,i) => 
+    '<tr><td>'+(i+1)+'</td><td>'+escapeHTML(e.name)+'</td><td>'+e.levelName+'</td><td>'+e.timeStr+'</td></tr>'
+  ).join('');
+  if (lb.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:#8B7355">Пока пусто</td></tr>';
+  }
+}
+
+function escapeHTML(s) {
+  let d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function toggleLeaderboard() {
+  let lb = document.getElementById('leaderboard');
+  lb.classList.toggle('show');
+  if (lb.classList.contains('show')) renderLeaderboard();
+}
+
+// ---- Рендеринг ----
+let tileDOM = {}; // id -> DOM element
+
+function renderAll() {
+  let layer = document.getElementById('tileLayer');
+  let boardEl = document.getElementById('board');
+  
+  // Обновляем размеры
+  let boardRect = boardEl.getBoundingClientRect();
+  let cellW = boardRect.width / 5;
+  let cellH = boardRect.height / 5;
+  let gap = 5;
+  
+  // Обновляем существующие и создаём новые
+  let currentIds = new Set(tiles.map(t => t.id));
+  
+  // Удаляем DOM элементы для плиток, которых больше нет
+  for (let id in tileDOM) {
+    if (!currentIds.has(Number(id))) {
+      tileDOM[id].remove();
+      delete tileDOM[id];
+    }
+  }
+  
+  tiles.forEach(t => {
+    let x = t.col * (cellW + gap);
+    let y = t.row * (cellH + gap);
+    let size = cellW;
+    
+    let el = tileDOM[t.id];
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'tile';
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      el.style.fontSize = Math.max(10, size * 0.28) + 'px';
+      layer.appendChild(el);
+      tileDOM[t.id] = el;
+    }
+    
+    el.style.setProperty('--tx', x + 'px');
+    el.style.setProperty('--ty', y + 'px');
+    el.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.style.fontSize = Math.max(10, size * 0.28) + 'px';
+    el.textContent = LEVELS[t.level - 1] || '?';
+    
+    let bgColor = TILE_COLORS[Math.min(t.level, 15)] || 'rgba(255,210,0,1)';
+    let txtColor = TEXT_COLORS[Math.min(t.level, 15)] || '#2B2D23';
+    el.style.background = bgColor;
+    el.style.color = txtColor;
+    el.style.lineHeight = size + 'px';
+    
+    // Анимации
+    el.classList.remove('new-tile', 'merged-tile');
+    if (t.isNew) {
+      void el.offsetWidth;
+      el.classList.add('new-tile');
+      t.isNew = false;
+    }
+    if (t.merged) {
+      void el.offsetWidth;
+      el.classList.add('merged-tile');
+      t.merged = false;
+    }
+  });
+}
+
+// Инициализация доски (сетка)
+function buildBoard() {
+  let boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  for (let i = 0; i < 25; i++) {
+    let cell = document.createElement('div');
+    cell.className = 'cell';
+    boardEl.appendChild(cell);
+  }
+}
+
+// ---- Свайпы ----
+let touchStartX = 0, touchStartY = 0;
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildBoard();
+  initBoard();
+  spawnRandom();
+  spawnRandom();
+  renderAll();
+  startTimer();
+  renderLeaderboard();
+});
+
+let boardContainer = null;
+document.addEventListener('DOMContentLoaded', () => {
+  boardContainer = document.getElementById('boardContainer');
+});
+
+document.addEventListener('touchstart', function(e) {
+  if (e.target.closest('#boardContainer')) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }
+}, {passive: false});
+
+document.addEventListener('touchmove', function(e) {
+  if (e.target.closest('#boardContainer')) {
+    e.preventDefault();
+  }
+}, {passive: false});
+
+document.addEventListener('touchend', function(e) {
+  if (!e.target || !e.target.closest) return;
+  let boardContainerEl = document.getElementById('boardContainer');
+  if (!boardContainerEl) return;
+  if (!e.target.closest('#boardContainer')) return;
+  
+  let dx = e.changedTouches[0].clientX - touchStartX;
+  let dy = e.changedTouches[0].clientY - touchStartY;
+  let absDx = Math.abs(dx);
+  let absDy = Math.abs(dy);
+  
+  if (Math.max(absDx, absDy) < 25) return; // слишком короткий свайп
+  
+  if (absDx > absDy) {
+    moveTiles(0, dx > 0 ? 1 : -1);
+  } else {
+    moveTiles(1, dy > 0 ? 1 : -1);
+  }
+});
+
+// Клавиатура для десктопа
+document.addEventListener('keydown', function(e) {
+  if (gameOver) return;
+  switch(e.key) {
+    case 'ArrowLeft': e.preventDefault(); moveTiles(0, -1); break;
+    case 'ArrowRight': e.preventDefault(); moveTiles(0, 1); break;
+    case 'ArrowUp': e.preventDefault(); moveTiles(-1, 0); break;
+    case 'ArrowDown': e.preventDefault(); moveTiles(1, 0); break;
+  }
+});
+
+// Ресайз
+window.addEventListener('resize', renderAll);
+</script>
+</body>
+</html>
