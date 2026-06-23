@@ -2,28 +2,53 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Денежное Слияние</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Денежное Слияние: Drag & Drop</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #2c3e50; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #2c3e50; color: white; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 20px; margin: 0; height: 100vh; overflow: hidden;
+        }
         h1 { margin-bottom: 5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
         
         /* Панель счета */
-        #score-board { font-size: 1.8em; margin-bottom: 20px; background: rgba(0,0,0,0.4); padding: 15px 30px; border-radius: 50px; border: 2px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        #score-board { 
+            font-size: 1.8em; margin-bottom: 20px; 
+            background: rgba(0,0,0,0.4); padding: 15px 30px; 
+            border-radius: 50px; border: 2px solid white; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
         
         /* Сетка */
-        .grid { display: grid; grid-template-columns: repeat(5, 100px); gap: 8px; margin-bottom: 30px; padding: 10px; background: #34495e; border-radius: 12px; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(5, 100px); 
+            gap: 8px; margin-bottom: 30px; 
+            padding: 10px; background: #34495e; 
+            border-radius: 12px; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            position: relative;
+        }
         
         /* Клетка */
         .cell { 
             width: 100px; height: 100px; 
             display: flex; align-items: center; justify-content: center; 
-            font-weight: bold; font-size: 1.1em; cursor: pointer; 
-            border-radius: 8px; transition: all 0.2s ease; position: relative;
-            user-select: none;
+            font-weight: bold; font-size: 1.1em; cursor: grab; 
+            border-radius: 8px; transition: all 0.2s ease; 
+            user-select: none; position: relative; z-index: 2;
+            box-sizing: border-box;
         }
-        .cell:hover { transform: scale(1.05); z-index: 10; }
-        .cell.selected { transform: scale(1.1); border: 3px solid yellow; box-shadow: 0 0 15px yellow; z-index: 20; }
-        .cell.disabled { cursor: not-allowed; opacity: 0.7; filter: grayscale(100%); }
+        .cell:active { cursor: grabbing; }
+        .cell.dragging { 
+            opacity: 0.5; transform: scale(0.95); 
+            pointer-events: none; z-index: 1;
+        }
+        .cell.highlight { 
+            filter: brightness(1.2); border: 3px solid yellow; 
+            z-index: 3; box-shadow: 0 0 15px yellow;
+        }
 
         /* Цвета уровней денег */
         .lvl-1 { background: #2ecc71; color: black; } /* 1 */
@@ -46,8 +71,15 @@
         .safe { background: #1abc9c; color: white; border: 3px solid white; font-size: 0.9em; } 
         .empty { background: transparent; color: #555; border: 2px dashed #555; pointer-events: none; } 
 
-        button { padding: 15px 40px; font-size: 1.2em; margin-top: 10px; cursor: pointer; background: white; color: #2c3e50; border: none; border-radius: 50px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); font-weight: bold; }
+        button { 
+            padding: 15px 40px; font-size: 1.2em; margin-top: 10px; cursor: pointer; 
+            background: white; color: #2c3e50; border: none; border-radius: 50px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); font-weight: bold;
+        }
         button:hover { background: #f1c40f; transform: translateY(-2px); }
+
+        /* Подсказка */
+        .hint { margin-top: 10px; color: #aaa; font-size: 0.9em; text-align: center; }
     </style>
 </head>
 <body>
@@ -57,16 +89,16 @@
     
     <div class="grid" id="game-grid"></div>
     <button onclick="restartGame()">Начать заново</button>
-    <p style="margin-top:10px; color:#aaa; font-size:0.9em;">Кликни на первую фишку, затем на соседнюю.</p>
+    <p class="hint">Перетащи одну фишку на соседнюю, чтобы объединить их!</p>
 
 <script>
     const GRID_SIZE = 5;
-    let grid = []; // Массив данных: хранит объекты {type, value, level, effect}
-    let selectedIndex = null;
+    let grid = []; // Массив данных
     let score = 0;
     const scoreEl = document.getElementById('score');
+    let activeDrag = null; // Индекс перетаскиваемой фишки
 
-    // Конфигурация уровней (твоя прогрессия)
+    // Конфигурация уровней
     const MONEY_LEVELS = [
         { val: 1, name: "1₽", class: "lvl-1" },
         { val: 2, name: "2₽", class: "lvl-2" },
@@ -95,8 +127,6 @@
         grid = [];
         score = 0;
         updateScore();
-        
-        // Заполняем поле
         for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
             grid.push(generateRandomCell());
         }
@@ -106,10 +136,173 @@
     function generateRandomCell() {
         const rand = Math.random();
         if (rand < 0.65) {
-            // 65% - деньги (уровни 0-3 для старта)
             const lvl = Math.floor(Math.random() * 4);
             return { ...MONEY_LEVELS[lvl], type: 'money', level: lvl };
         } else if (rand < 0.85) {
-            // 20% - негатив
             const neg = NEGATIVE_TYPES[Math.floor(Math.random() * NEGATIVE_TYPES.length)];
-            return { ...
+            return { ...neg, level: -1 };
+        } else {
+            const neu = NEUTRAL_TYPES[Math.floor(Math.random() * NEUTRAL_TYPES.length)];
+            return { ...neu, level: -2 };
+        }
+    }
+
+    function renderGrid() {
+        const gridEl = document.getElementById('game-grid');
+        gridEl.innerHTML = '';
+
+        grid.forEach((cellData, index) => {
+            const div = document.createElement('div');
+            div.className = `cell ${cellData.class}`;
+            
+            if (cellData.type === 'empty') {
+                div.classList.add('empty');
+                div.innerHTML = "&nbsp;";
+            } else {
+                div.innerText = cellData.name;
+            }
+
+            // --- ЛОГИКА DRAG AND DROP ---
+            
+            // Начало перетаскивания (зажали кнопку мыши / палец)
+            div.addEventListener('mousedown', (e) => startDrag(index, e));
+            div.addEventListener('touchstart', (e) => { e.preventDefault(); startDrag(index, e); });
+
+            // Движение мыши (обновляем позицию визуально, если нужно, но у нас сетка)
+            div.addEventListener('mousemove', (e) => handleDragMove(index, e));
+            div.addEventListener('touchmove', (e) => { e.preventDefault(); handleDragMove(index, e); });
+
+            // Конец перетаскивания (отпустили)
+            document.addEventListener('mouseup', () => endDrag());
+            document.addEventListener('touchend', () => endDrag());
+
+            gridEl.appendChild(div);
+        });
+    }
+
+    function updateScore() {
+        scoreEl.innerText = score;
+    }
+
+    // --- Функции Drag-and-Drop ---
+
+    function startDrag(index, event) {
+        // Если это пустая клетка или мы уже тащим что-то - не начинаем
+        if (grid[index].type === 'empty' || activeDrag !== null) return;
+        
+        activeDrag = index;
+        const cells = document.querySelectorAll('.cell');
+        cells[index].classList.add('dragging');
+        
+        // Подсветка возможных целей (соседей)
+        highlightNeighbors(index);
+    }
+
+    function highlightNeighbors(startIndex) {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach((cell, idx) => {
+            if (idx !== startIndex && grid[idx].type !== 'empty' && areNeighbors(startIndex, idx)) {
+                cell.classList.add('highlight');
+            } else {
+                cell.classList.remove('highlight');
+            }
+        });
+    }
+
+    function handleDragMove(targetIndex, event) {
+        if (activeDrag === null) return;
+
+        const cells = document.querySelectorAll('.cell');
+        
+        // Сбрасываем подсветку со всех
+        cells.forEach(c => c.classList.remove('highlight'));
+
+        // Проверяем, навели ли мы на соседа
+        if (areNeighbors(activeDrag, targetIndex) && grid[targetIndex].type !== 'empty') {
+            cells[targetIndex].classList.add('highlight');
+        }
+    }
+
+    function endDrag() {
+        if (activeDrag === null) return;
+
+        const cells = document.querySelectorAll('.cell');
+        const startCell = grid[activeDrag];
+        
+        // Пытаемся найти, на какую клетку мы "бросили" (ту, что подсвечена желтым)
+        let targetIndex = -1;
+        cells.forEach((cell, idx) => {
+            if (cell.classList.contains('highlight')) {
+                targetIndex = idx;
+            }
+        });
+
+        // Убираем все визуальные эффекты
+        cells.forEach(c => {
+            c.classList.remove('dragging');
+            c.classList.remove('highlight');
+        });
+
+        if (targetIndex !== -1 && targetIndex !== activeDrag) {
+            // Если навели на соседа - сливаем!
+            processMerge(activeDrag, targetIndex, startCell, grid[targetIndex]);
+        } else {
+            // Иначе просто сброс
+            console.log("Бросок отменен или не на соседа");
+        }
+
+        activeDrag = null;
+        renderGrid(); // Перерисовываем, чтобы убрать старые классы и показать результат
+    }
+
+    function areNeighbors(idx1, idx2) {
+        const r1 = Math.floor(idx1 / GRID_SIZE);
+        const c1 = idx1 % GRID_SIZE;
+        const r2 = Math.floor(idx2 / GRID_SIZE);
+        const c2 = idx2 % GRID_SIZE;
+        return Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1;
+    }
+
+    function processMerge(idxA, idxB, cellA, cellB) {
+        // 1. Деньги + Деньги
+        if (cellA.type === 'money' && cellB.type === 'money' && cellA.level === cellB.level) {
+            const nextLevel = cellA.level + 1;
+            if (nextLevel < MONEY_LEVELS.length) {
+                const newCell = { ...MONEY_LEVELS[nextLevel], type: 'money', level: nextLevel };
+                grid[idxA] = newCell; // Ставим результат на место первой фишки
+                grid[idxB] = { ...NEUTRAL_TYPES.find(n => n.type === 'empty'), type: 'empty', level: -2 }; // Вторую делаем пустой
+
+                if (newCell.val > 0) {
+                    score += newCell.val;
+                    updateScore();
+                }
+                alert(`Отлично! Получен уровень: ${newCell.name}`);
+            } else {
+                alert("Максимальный уровень достигнут!");
+            }
+        } 
+        // 2. Вор + Деньги
+        else if ((cellA.effect === "steal" && cellB.type === 'money') || (cellB.effect === "steal" && cellA.type === 'money')) {
+            alert("Вор украл ваши деньги!");
+            const moneyIdx = (cellA.effect === "steal") ? idxB : idxA;
+            grid[moneyIdx] = { ...NEUTRAL_TYPES.find(n => n.type === 'empty'), type: 'empty', level: -2 };
+            // Вор остается
+        }
+        // 3. Долг + Деньги
+        else if ((cellA.effect === "lose_money" && cellB.type === 'money') || (cellB.effect === "lose_money" && cellA.type === 'money')) {
+            alert("Вы потеряли деньги из-за долга!");
+            const moneyVal = (cellA.effect === "lose_money") ? cellB.val : cellA.val;
+            score -= moneyVal;
+            updateScore();
+            const moneyIdx = (cellA.effect === "lose_money") ? idxB : idxA;
+            grid[moneyIdx] = { ...NEUTRAL_TYPES.find(n => n.type === 'empty'), type: 'empty', level: -2 };
+        }
+        // 4. Копилка + Деньги
+        else if ((cellA.effect === "protect" && cellB.type === 'money') || (cellB.effect === "protect" && cellA.type === 'money')) {
+            alert("Копилка сохранила ваши сбережения!");
+            const safeIdx = (cellA.effect === "protect") ? idxA : idxB;
+            // Копилка исчезает, деньги остаются
+            grid[safeIdx] = { ...NEUTRAL_TYPES.find(n => n.type === 'empty'), type: 'empty', level: -2 }; 
+        }
+        else {
+            alert("Нельзя соединить эти
