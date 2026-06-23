@@ -20,11 +20,9 @@
         }
         .cell:active { cursor: grabbing; }
 
-        /* Состояния перетаскивания */
         .dragging-source { opacity: 0.5; transform: scale(0.9); pointer-events: none; z-index: 0; }
         .possible-target { border: 3px solid #f1c40f; transform: scale(1.05); z-index: 2; }
 
-        /* Цвета денег */
         .lvl-1 { background: #2ecc71; color: black; }
         .lvl-2 { background: #27ae60; color: white; }
         .lvl-3 { background: #f1c40f; color: black; }
@@ -37,7 +35,6 @@
         .lvl-10 { background: #bdc3c7; color: black; border: 1px solid #555; }
         .lvl-11 { background: #d35400; color: white; font-weight: 900; text-transform: uppercase; }
 
-        /* Спец объекты */
         .thief { background: #2c3e50; color: red; border: 2px dashed red; font-size: 0.8em; text-align: center; padding: 4px; }
         .debt { background: #555; color: yellow; border: 2px solid yellow; font-size: 0.8em; }
         .safe { background: #1abc9c; color: white; border: 2px solid white; font-size: 0.8em; }
@@ -50,6 +47,8 @@
         #msg.show { transform: translateX(-50%) translateY(0); }
         #msg.success { color: #2ecc71; }
         #msg.error { color: #e74c3c; }
+
+        .drag-ghost { position: fixed; pointer-events: none; z-index: 999; width: 90px; height: 90px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1em; opacity: 0.9; transform: translate(-50%, -50%); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
@@ -66,205 +65,191 @@
         const SIZE = 5;
         let grid = [];
         let score = 0;
+        let won = false;
         const scoreEl = document.getElementById('score');
         const msgEl = document.getElementById('msg');
+        const gridEl = document.getElementById('game-grid');
 
-        // Данные уровней
         const MONEY = [
             {v:1, n:"1₽", c:"lvl-1"}, {v:2, n:"2₽", c:"lvl-2"}, {v:5, n:"5₽", c:"lvl-3"},
             {v:10, n:"10₽", c:"lvl-4"}, {v:100, n:"100₽", c:"lvl-5"}, {v:500, n:"500₽", c:"lvl-6"},
-            {v:1000, n:"1к₽", c:"lvl-7"}, {v:10000, n:"10к₽", c:"lvl-8"}, 
-            {v:0, n:"Чемодан", c:"lvl-9"}, {v:0, n:"Банк", c:"lvl-10"}, {v:999999, n:"През.", c:"lvl-11"}
+            {v:1000, n:"1000₽", c:"lvl-7"}, {v:5000, n:"5000₽", c:"lvl-8"},
+            {v:10000, n:"10к₽", c:"lvl-9"}, {v:50000, n:"50к₽", c:"lvl-10"},
+            {v:100000, n:"МОНЕТНЫЙ ДОМ", c:"lvl-11"}
         ];
-        const BAD = [{t:"thief", n:"Вор", c:"thief"}, {t:"debt", n:"Долг", c:"debt"}];
-        const NEUT = [{t:"safe", n:"Копилка", c:"safe"}, {t:"empty", n:"", c:"empty"}];
 
-        let dragIdx = -1;
-
-        function init() {
-            grid = [];
-            score = 0;
-            updateScore();
-            for(let i=0; i<SIZE*SIZE; i++) grid.push(randomCell());
-            render();
+        function showMsg(text, cls) {
+            msgEl.textContent = text;
+            msgEl.className = cls || '';
+            msgEl.classList.add('show');
+            clearTimeout(msgEl._t);
+            msgEl._t = setTimeout(() => msgEl.classList.remove('show'), 1500);
         }
 
-        function randomCell() {
-            let r = Math.random();
-            if(r < 0.75) {
-                let lvl = Math.floor(Math.random() * 6);
-                return {...MONEY[lvl], type: 'money', lvl: lvl};
-            } else if(r < 0.88) {
-                let b = BAD[Math.floor(Math.random()*BAD.length)];
-                return {...b, type: 'bad', lvl: -1};
-            } else {
-                let n = NEUT[Math.floor(Math.random()*NEUT.length)];
-                return {...n, type: 'neutral', lvl: -2};
+        function emptyCells() {
+            let res = [];
+            for (let r = 0; r < SIZE; r++)
+                for (let c = 0; c < SIZE; c++)
+                    if (!grid[r][c]) res.push({r, c});
+            return res;
+        }
+
+        function spawnOne() {
+            if (won) return;
+            let empty = emptyCells();
+            if (!empty.length) return;
+            let pos = empty[Math.floor(Math.random() * empty.length)];
+            grid[pos.r][pos.c] = { lvl: 0 };
+        }
+
+        function spawnInitial() {
+            for (let i = 0; i < 6; i++) spawnOne();
+        }
+
+        function canMerge(a, b) {
+            if (!a || !b) return false;
+            return a.lvl === b.lvl && a.lvl < MONEY.length - 1;
+        }
+
+        function tryMerge(r1, c1, r2, c2) {
+            let a = grid[r1][c1], b = grid[r2][c2];
+            if (!canMerge(a, b)) return false;
+            let nextLvl = a.lvl + 1;
+            grid[r1][c1] = null;
+            grid[r2][c2] = null;
+            let empty = emptyCells();
+            let target = empty.length ? empty[Math.floor(Math.random() * empty.length)] : {r: r2, c: c2};
+            grid[target.r][target.c] = { lvl: nextLvl };
+            score += MONEY[nextLvl].v;
+            scoreEl.textContent = score;
+            showMsg('+' + MONEY[nextLvl].v + '₽', 'success');
+            if (nextLvl === MONEY.length - 1) {
+                won = true;
+                showMsg('🏆 МОНЕТНЫЙ ДОМ! Ты выиграл!', 'success');
             }
+            render();
+            if (!won) spawnOne();
+            render();
+            return true;
+        }
+
+        let dragR = -1, dragC = -1, ghost = null;
+
+        function getCellFromEvent(e) {
+            let x = e.touches ? e.touches[0].clientX : e.clientX;
+            let y = e.touches ? e.touches[0].clientY : e.clientY;
+            let el = document.elementFromPoint(x, y);
+            return el ? el.closest('.cell[data-row]') : null;
+        }
+
+        function onDown(e) {
+            if (won) return;
+            let cell = getCellFromEvent(e);
+            if (!cell) return;
+            dragR = +cell.dataset.row;
+            dragC = +cell.dataset.col;
+            if (!grid[dragR][dragC]) { dragR = -1; dragC = -1; return; }
+            cell.classList.add('dragging-source');
+            let m = MONEY[grid[dragR][dragC].lvl];
+            ghost = document.createElement('div');
+            ghost.className = 'drag-ghost ' + m.c;
+            ghost.textContent = m.n;
+            document.body.appendChild(ghost);
+            moveGhost(e);
+            highlightTargets(dragR, dragC);
+        }
+
+        function moveGhost(e) {
+            if (!ghost) return;
+            let x = e.touches ? e.touches[0].clientX : e.clientX;
+            let y = e.touches ? e.touches[0].clientY : e.clientY;
+            ghost.style.left = x + 'px';
+            ghost.style.top = y + 'px';
+        }
+
+        function highlightTargets(sr, sc) {
+            let src = grid[sr][sc];
+            document.querySelectorAll('.cell[data-row]').forEach(cell => {
+                let r = +cell.dataset.row, c = +cell.dataset.col;
+                if (r === sr && c === sc) return;
+                if (canMerge(src, grid[r][c])) cell.classList.add('possible-target');
+            });
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.possible-target').forEach(c => c.classList.remove('possible-target'));
+            document.querySelectorAll('.dragging-source').forEach(c => c.classList.remove('dragging-source'));
+        }
+
+        function onUp(e) {
+            if (!ghost) return;
+            ghost.remove();
+            ghost = null;
+            clearHighlights();
+            if (dragR === -1) return;
+            let cell = getCellFromEvent(e);
+            if (!cell) { dragR = dragC = -1; return; }
+            let r = +cell.dataset.row, c = +cell.dataset.col;
+            if (r === dragR && c === dragC) { dragR = dragC = -1; return; }
+            if (tryMerge(dragR, dragC, r, c)) { dragR = dragC = -1; return; }
+            if (!grid[r][c]) {
+                grid[r][c] = grid[dragR][dragC];
+                grid[dragR][dragC] = null;
+                render();
+                spawnOne();
+                render();
+            }
+            dragR = dragC = -1;
+        }
+
+        function onMove(e) {
+            if (!ghost) return;
+            e.preventDefault();
+            moveGhost(e);
         }
 
         function render() {
-            const container = document.getElementById('game-grid');
-            container.innerHTML = '';
-            grid.forEach((data, i) => {
-                const div = document.createElement('div');
-                div.className = `cell ${data.c}`;
-                if(data.type === 'empty') div.innerHTML = '&nbsp;';
-                else div.innerText = data.n;
-                
-                div.addEventListener('mousedown', e => startDrag(i, e));
-                div.addEventListener('touchstart', e => { e.preventDefault(); startDrag(i, e); });
-                container.appendChild(div);
-            });
-        }
-
-        function updateScore() { scoreEl.innerText = score; }
-        function showMsg(text, type='normal') {
-            msgEl.innerText = text;
-            msgEl.className = 'show';
-            if(type==='success') msgEl.classList.add('success');
-            else if(type==='error') msgEl.classList.add('error');
-            setTimeout(()=>msgEl.className='', 2500);
-        }
-
-        // --- Drag Logic ---
-        function startDrag(idx, e) {
-            if(grid[idx].type === 'empty' || dragIdx !== -1) return;
-            dragIdx = idx;
-            const cells = document.querySelectorAll('.cell');
-            cells[idx].classList.add('dragging-source');
-            highlightNeighbors(idx);
-        }
-
-        function highlightNeighbors(start) {
-            const cells = document.querySelectorAll('.cell');
-            cells.forEach((c, idx) => {
-                if(idx !== start && grid[idx].type !== 'empty' && isNeighbor(start, idx)) {
-                    c.classList.add('possible-target');
-                } else {
-                    c.classList.remove('possible-target');
-                }
-            });
-        }
-
-        function isNeighbor(a, b) {
-            const r1 = Math.floor(a/SIZE), c1 = a%SIZE;
-            const r2 = Math.floor(b/SIZE), c2 = b%SIZE;
-            return (Math.abs(r1-r2) === 1 && c1===c2) || (r1===r2 && Math.abs(c1-c2)===1);
-        }
-
-        document.addEventListener('mousemove', handleMove);
-        document.addEventListener('mouseup', endDrag);
-        document.addEventListener('touchmove', e => { e.preventDefault(); handleMove(e); }, {passive: false});
-        document.addEventListener('touchend', endDrag);
-
-        function handleMove(e) {
-            if(dragIdx === -1) return;
-            const mx = e.clientX || e.touches[0].clientX;
-            const my = e.clientY || e.touches[0].clientY;
-            
-            const cells = document.querySelectorAll('.cell:not(.dragging-source)');
-            let found = false;
-            cells.forEach(c => {
-                const r = c.getBoundingClientRect();
-                if(mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom) {
-                    const tIdx = Array.from(document.querySelectorAll('.cell')).indexOf(c);
-                    if(isNeighbor(dragIdx, tIdx)) {
-                        c.classList.add('possible-target');
-                        found = true;
+            gridEl.innerHTML = '';
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    let cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    let item = grid[r][c];
+                    if (item) {
+                        let m = MONEY[item.lvl];
+                        cell.classList.add(m.c);
+                        cell.textContent = m.n;
+                    } else {
+                        cell.classList.add('empty');
                     }
-                } else {
-                    c.classList.remove('possible-target');
+                    gridEl.appendChild(cell);
                 }
-            });
-            if(!found) cells.forEach(c => c.classList.remove('possible-target'));
+            }
         }
 
-        function endDrag(e) {
-            if(dragIdx === -1) return;
-            
-            // Определяем цель по координатам мыши/пальца
-            const mx = e.clientX || (e.touches ? e.touches[0].clientX : 0);
-            const my = e.clientY || (e.touches ? e.touches[0].clientY : 0);
-            
-            let targetIdx = -1;
-            const allCells = Array.from(document.querySelectorAll('.cell'));
-            allCells.forEach((c, i) => {
-                const r = c.getBoundingClientRect();
-                if(mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom) {
-                    targetIdx = i;
-                }
-            });
-
-            // Проверка: сосед ли это?
-            if(targetIdx === -1 || !isNeighbor(dragIdx, targetIdx)) {
-                resetDrag();
-                return;
-            }
-
-            const src = grid[dragIdx];
-            const dst = grid[targetIdx];
-            let valid = true;
-            let msg = "";
-            let mType = "normal";
-
-            if(src.type === 'money' && dst.type === 'money') {
-                if(src.lvl === dst.lvl) {
-                    let nextLvl = src.lvl + 1;
-                    if(nextLvl >= MONEY.length) nextLvl = MONEY.length - 1;
-                    
-                    grid[targetIdx] = {...MONEY[nextLvl], type:'money', lvl:nextLvl};
-                    score += MONEY[nextLvl].v;
-                    grid[dragIdx] = {...NEUT[1], type:'neutral', lvl:-2}; // Пустая
-                    msg = `Слияние! Получено ${grid[targetIdx].n}`;
-                    mType = 'success';
-                } else {
-                    valid = false;
-                    msg = "Можно сливать только одинаковые!";
-                    mType = 'error';
-                }
-            } 
-            else if (src.type === 'bad' && src.t === 'thief') {
-                // Вор крадет у денег
-                if(dst.type === 'money') {
-                    score -= dst.v;
-                    grid[targetIdx] = {...NEUT[1], type:'neutral', lvl:-2};
-                    grid[dragIdx] = randomCell(); // Вор исчезает
-                    msg = "Вор украл деньги!";
-                    mType = 'error';
-                } else valid = false;
-            }
-            else {
-                // Простое перемещение (обмен местами или сброс на пустую)
-                if(dst.type !== 'empty') {
-                    [grid[dragIdx], grid[targetIdx]] = [grid[targetIdx], grid[dragIdx]];
-                } else {
-                    grid[targetIdx] = src;
-                    grid[dragIdx] = {...NEUT[1], type:'neutral', lvl:-2};
-                }
-                msg = "Ход сделан";
-            }
-
-            resetDrag();
-            updateScore();
+        function restart() {
+            grid = Array.from({length: SIZE}, () => Array(SIZE).fill(null));
+            score = 0;
+            won = false;
+            scoreEl.textContent = '0';
+            spawnInitial();
             render();
-            
-            if(!valid) showMsg(msg, 'error');
-            else showMsg(msg, mType);
+            showMsg('Новая игра!', 'success');
         }
 
-        function resetDrag() {
-            dragIdx = -1;
-            document.querySelectorAll('.cell').forEach(c => {
-                c.classList.remove('dragging-source', 'possible-target');
-            });
-        }
+        gridEl.addEventListener('touchstart', onDown, {passive: true});
+        gridEl.addEventListener('touchmove', onMove, {passive: false});
+        gridEl.addEventListener('touchend', onUp);
+        gridEl.addEventListener('touchcancel', onUp);
+        gridEl.addEventListener('mousedown', onDown);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
 
-        return { restart: init };
+        restart();
+        return { restart };
     })();
-
-    // Старт при загрузке
-    document.addEventListener('DOMContentLoaded', () => Game.restart());
 </script>
 </body>
 </html>
