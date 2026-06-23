@@ -3,529 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Денежное Слияние: Drag & Drop</title>
+    <title>Денежное Слияние</title>
     <style>
-        :root {
-            --bg-color: #2c3e50;
-            --grid-bg: #34495e;
-            --text-color: white;
-            --primary: #f1c40f;
-        }
-
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: var(--bg-color); 
-            color: var(--text-color); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 20px; 
-            margin: 0; 
-            height: 100vh; 
-            overflow: hidden;
-            user-select: none;
-        }
-        
-        h1 { margin-bottom: 5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
-        
-        #score-board { 
-            font-size: 1.8em; 
-            margin-bottom: 20px; 
-            background: rgba(0,0,0,0.4); 
-            padding: 15px 30px; 
-            border-radius: 50px; 
-            border: 2px solid white; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* Сообщение об игре (вместо alert) */
-        #game-message {
-            position: absolute;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-100%);
-            background: rgba(0, 0, 0, 0.85);
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-weight: bold;
-            color: white;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 10;
-            pointer-events: none;
-            text-align: center;
-        }
-        #game-message.visible {
-            transform: translateX(-50%) translateY(0);
-        }
-        #game-message.success { color: #2ecc71; }
-        #game-message.error { color: #e74c3c; }
-
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(5, 100px); 
-            gap: 8px; 
-            margin-bottom: 30px; 
-            padding: 10px; 
-            background: var(--grid-bg); 
-            border-radius: 12px; 
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
-            position: relative;
-            touch-action: none; /* Важно для мобильных */
-        }
+        body { font-family: sans-serif; background: #2c3e50; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; height: 100vh; overflow: hidden; user-select: none; }
+        h1 { margin-bottom: 10px; }
+        #score { font-size: 1.5em; font-weight: bold; color: #f1c40f; }
+        .grid { display: grid; grid-template-columns: repeat(5, 90px); gap: 5px; margin-bottom: 20px; padding: 10px; background: #34495e; border-radius: 8px; }
         
         .cell { 
-            width: 100px; height: 100px; 
+            width: 90px; height: 90px; 
             display: flex; align-items: center; justify-content: center; 
             font-weight: bold; font-size: 1.1em; 
-            border-radius: 8px; 
-            cursor: grab; 
-            user-select: none; 
-            position: relative; 
-            z-index: 2;
-            box-sizing: border-box;
-            background-color: #4a6278;
-            transition: all 0.2s ease, transform 0.1s;
-            will-change: transform, opacity, filter;
+            border-radius: 6px; cursor: grab; 
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
         .cell:active { cursor: grabbing; }
-        
-        /* Эффекты перетаскивания */
-        .cell.dragging-source { 
-            opacity: 0.5; 
-            transform: scale(0.95); 
-            pointer-events: none; 
-            z-index: 1;
-        }
-        .cell.possible-target { 
-            filter: brightness(1.3); 
-            border: 3px solid var(--primary); 
-            z-index: 3; 
-            box-shadow: 0 0 15px var(--primary);
-            transform: scale(1.05);
-        }
 
-        /* Цвета уровней денег */
-        .lvl-1 { background: #2ecc71; color: black; } 
-        .lvl-2 { background: #27ae60; color: white; } 
-        .lvl-3 { background: #f1c40f; color: black; } 
-        .lvl-4 { background: #f39c12; color: white; } 
-        .lvl-5 { background: #e67e22; color: white; } 
-        .lvl-6 { background: #c0392b; color: white; } 
-        .lvl-7 { background: #9b59b6; color: white; } 
-        .lvl-8 { background: #34495e; color: gold; border: 2px solid gold; } 
-        .lvl-9 { background: linear-gradient(45deg, #7f8c8d, #95a5a6); color: silver; font-style: italic; } 
-        .lvl-10 { background: #bdc3c7; color: black; border: 2px solid #333; } 
-        .lvl-11 { background: #d35400; color: white; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; } 
+        /* Состояния перетаскивания */
+        .dragging-source { opacity: 0.5; transform: scale(0.9); pointer-events: none; z-index: 0; }
+        .possible-target { border: 3px solid #f1c40f; transform: scale(1.05); z-index: 2; }
 
-        /* Отрицательные объекты */
-        .thief { background: #2c3e50; color: red; border: 3px dashed red; font-size: 0.9em; text-align: center; padding: 5px; } 
-        .debt { background: #555; color: yellow; border: 2px solid yellow; font-size: 0.8em; } 
+        /* Цвета денег */
+        .lvl-1 { background: #2ecc71; color: black; }
+        .lvl-2 { background: #27ae60; color: white; }
+        .lvl-3 { background: #f1c40f; color: black; }
+        .lvl-4 { background: #f39c12; color: white; }
+        .lvl-5 { background: #e67e22; color: white; }
+        .lvl-6 { background: #c0392b; color: white; }
+        .lvl-7 { background: #9b59b6; color: white; }
+        .lvl-8 { background: #34495e; color: gold; border: 2px solid gold; }
+        .lvl-9 { background: linear-gradient(45deg, #7f8c8d, #95a5a6); color: silver; }
+        .lvl-10 { background: #bdc3c7; color: black; border: 1px solid #555; }
+        .lvl-11 { background: #d35400; color: white; font-weight: 900; text-transform: uppercase; }
 
-        /* Нейтральные объекты */
-        .safe { background: #1abc9c; color: white; border: 3px solid white; font-size: 0.9em; } 
-        .empty { background: transparent; color: #555; border: 2px dashed #555; pointer-events: none; } 
+        /* Спец объекты */
+        .thief { background: #2c3e50; color: red; border: 2px dashed red; font-size: 0.8em; text-align: center; padding: 4px; }
+        .debt { background: #555; color: yellow; border: 2px solid yellow; font-size: 0.8em; }
+        .safe { background: #1abc9c; color: white; border: 2px solid white; font-size: 0.8em; }
+        .empty { background: transparent; color: #666; border: 1px dashed #666; pointer-events: none; }
 
-        button { 
-            padding: 15px 40px; font-size: 1.2em; margin-top: 10px; cursor: pointer; 
-            background: white; color: #2c3e50; border: none; border-radius: 50px; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); font-weight: bold;
-        }
-        button:hover { background: var(--primary); transform: translateY(-2px); }
+        button { padding: 15px 30px; font-size: 1.2em; background: white; color: #2c3e50; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:hover { background: #f1c40f; }
 
-        .hint { margin-top: 10px; color: #aaa; font-size: 0.9em; text-align: center; }
+        #msg { position: absolute; top: 80px; left: 50%; transform: translateX(-50%) translateY(-100%); background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 20px; z-index: 10; transition: transform 0.3s; }
+        #msg.show { transform: translateX(-50%) translateY(0); }
+        #msg.success { color: #2ecc71; }
+        #msg.error { color: #e74c3c; }
     </style>
 </head>
 <body>
 
     <h1>Денежное Слияние</h1>
-    
-    <!-- Блок сообщений вместо alert -->
-    <div id="game-message"></div>
-
-    <div id="score-board">Баланс: <span id="score">0</span> ₽</div>
+    <div id="msg"></div>
+    <div>Баланс: <span id="score">0</span> ₽</div>
     
     <div class="grid" id="game-grid"></div>
     <button onclick="Game.restart()">Начать заново</button>
-    <p class="hint">Зажми фишку и перетащи на соседнюю клетку!</p>
 
 <script>
-    /**
-     * Игровой движок, инкапсулированный в объект Game.
-     * Это предотвращает конфликты глобальных переменных.
-     */
     const Game = (function() {
-        const GRID_SIZE = 5;
-        let grid = []; 
+        const SIZE = 5;
+        let grid = [];
         let score = 0;
         const scoreEl = document.getElementById('score');
-        const messageEl = document.getElementById('game-message');
-        
-        // Переменные для Drag-and-Drop
-        let activeDragIndex = null;
-        let isDragging = false;
-        let dragStartX, dragStartY;
+        const msgEl = document.getElementById('msg');
 
-        const MONEY_LEVELS = [
-            { val: 1, name: "1₽", class: "lvl-1" },
-            { val: 2, name: "2₽", class: "lvl-2" },
-            { val: 5, name: "5₽", class: "lvl-3" },
-            { val: 10, name: "10₽", class: "lvl-4" },
-            { val: 100, name: "100₽", class: "lvl-5" },
-            { val: 500, name: "500₽", class: "lvl-6" },
-            { val: 1000, name: "1000₽", class: "lvl-7" },
-            { val: 10000, name: "10к₽", class: "lvl-8" },
-            { val: 0, name: "Чемодан", class: "lvl-9" }, 
-            { val: 0, name: "Банк", class: "lvl-10" },
-            { val: 999999, name: "Президент", class: "lvl-11" }
+        // Данные уровней
+        const MONEY = [
+            {v:1, n:"1₽", c:"lvl-1"}, {v:2, n:"2₽", c:"lvl-2"}, {v:5, n:"5₽", c:"lvl-3"},
+            {v:10, n:"10₽", c:"lvl-4"}, {v:100, n:"100₽", c:"lvl-5"}, {v:500, n:"500₽", c:"lvl-6"},
+            {v:1000, n:"1к₽", c:"lvl-7"}, {v:10000, n:"10к₽", c:"lvl-8"}, 
+            {v:0, n:"Чемодан", c:"lvl-9"}, {v:0, n:"Банк", c:"lvl-10"}, {v:999999, n:"През.", c:"lvl-11"}
         ];
+        const BAD = [{t:"thief", n:"Вор", c:"thief"}, {t:"debt", n:"Долг", c:"debt"}];
+        const NEUT = [{t:"safe", n:"Копилка", c:"safe"}, {t:"empty", n:"", c:"empty"}];
 
-        const NEGATIVE_TYPES = [
-            { type: 'thief', name: "Вор", class: "thief", effect: "steal" },
-            { type: 'debt', name: "Долг", class: "debt", effect: "lose_money" }
-        ];
+        let dragIdx = -1;
 
-        const NEUTRAL_TYPES = [
-            { type: 'safe', name: "Копилка", class: "safe", effect: "protect" },
-            { type: 'empty', name: "", class: "empty", effect: "none" }
-        ];
-
-        // Инициализация игры
-        function initGame() {
+        function init() {
             grid = [];
             score = 0;
             updateScore();
-            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
-                grid.push(generateRandomCell());
-            }
-            renderGrid();
-            checkGameOver();
+            for(let i=0; i<SIZE*SIZE; i++) grid.push(randomCell());
+            render();
         }
 
-        function generateRandomCell() {
-            const rand = Math.random();
-            // Улучшенный баланс: меньше пустых, больше разнообразия
-            if (rand < 0.75) {
-                // Деньги: равномерное распределение по первым 6 уровням
-                const lvl = Math.floor(Math.random() * 6); 
-                return { ...MONEY_LEVELS[lvl], type: 'money', level: lvl };
-            } else if (rand < 0.88) {
-                const neg = NEGATIVE_TYPES[Math.floor(Math.random() * NEGATIVE_TYPES.length)];
-                return { ...neg, level: -1 };
+        function randomCell() {
+            let r = Math.random();
+            if(r < 0.75) {
+                let lvl = Math.floor(Math.random() * 6);
+                return {...MONEY[lvl], type: 'money', lvl: lvl};
+            } else if(r < 0.88) {
+                let b = BAD[Math.floor(Math.random()*BAD.length)];
+                return {...b, type: 'bad', lvl: -1};
             } else {
-                const neu = NEUTRAL_TYPES[Math.floor(Math.random() * NEUTRAL_TYPES.length)];
-                return { ...neu, level: -2 };
+                let n = NEUT[Math.floor(Math.random()*NEUT.length)];
+                return {...n, type: 'neutral', lvl: -2};
             }
         }
 
-        function renderGrid() {
-            const gridEl = document.getElementById('game-grid');
-            gridEl.innerHTML = '';
-
-            grid.forEach((cellData, index) => {
+        function render() {
+            const container = document.getElementById('game-grid');
+            container.innerHTML = '';
+            grid.forEach((data, i) => {
                 const div = document.createElement('div');
-                div.className = `cell ${cellData.class}`;
+                div.className = `cell ${data.c}`;
+                if(data.type === 'empty') div.innerHTML = '&nbsp;';
+                else div.innerText = data.n;
                 
-                if (cellData.type === 'empty') {
-                    div.classList.add('empty');
-                    div.innerHTML = "&nbsp;";
-                } else {
-                    div.innerText = cellData.name;
-                }
-
-                // Обработчики событий
-                div.addEventListener('mousedown', (e) => startDrag(index, e));
-                div.addEventListener('touchstart', (e) => { 
-                    e.preventDefault(); 
-                    startDrag(index, e); 
-                });
-                
-                gridEl.appendChild(div);
+                div.addEventListener('mousedown', e => startDrag(i, e));
+                div.addEventListener('touchstart', e => { e.preventDefault(); startDrag(i, e); });
+                container.appendChild(div);
             });
         }
 
-        function updateScore() {
-            if(scoreEl) scoreEl.innerText = score;
+        function updateScore() { scoreEl.innerText = score; }
+        function showMsg(text, type='normal') {
+            msgEl.innerText = text;
+            msgEl.className = 'show';
+            if(type==='success') msgEl.classList.add('success');
+            else if(type==='error') msgEl.classList.add('error');
+            setTimeout(()=>msgEl.className='', 2500);
         }
 
-        function showMessage(text, type = 'normal') {
-            if(!messageEl) return;
-            messageEl.textContent = text;
-            messageEl.className = 'visible';
-            if(type === 'success') messageEl.classList.add('success');
-            else if(type === 'error') messageEl.classList.add('error');
-            
-            setTimeout(() => {
-                messageEl.classList.remove('visible');
-                messageEl.classList.remove('success', 'error');
-            }, 3000);
-        }
-
-        // --- Логика Drag and Drop ---
-
-        function startDrag(index, event) {
-            if (grid[index].type === 'empty' || isDragging) return;
-            
-            isDragging = true;
-            activeDragIndex = index;
-            dragStartX = event.clientX || event.touches[0].clientX;
-            dragStartY = event.clientY || event.touches[0].clientY;
-            
+        // --- Drag Logic ---
+        function startDrag(idx, e) {
+            if(grid[idx].type === 'empty' || dragIdx !== -1) return;
+            dragIdx = idx;
             const cells = document.querySelectorAll('.cell');
-            cells[index].classList.add('dragging-source');
-            
-            highlightNeighbors(index);
+            cells[idx].classList.add('dragging-source');
+            highlightNeighbors(idx);
         }
 
-        function highlightNeighbors(startIndex) {
+        function highlightNeighbors(start) {
             const cells = document.querySelectorAll('.cell');
-            cells.forEach((cell, idx) => {
-                if (idx !== startIndex && grid[idx].type !== 'empty' && areNeighbors(startIndex, idx)) {
-                    cell.classList.add('possible-target');
+            cells.forEach((c, idx) => {
+                if(idx !== start && grid[idx].type !== 'empty' && isNeighbor(start, idx)) {
+                    c.classList.add('possible-target');
                 } else {
-                    cell.classList.remove('possible-target');
+                    c.classList.remove('possible-target');
                 }
             });
         }
 
-        function handleDragMove(event) {
-            if (!isDragging) return;
+        function isNeighbor(a, b) {
+            const r1 = Math.floor(a/SIZE), c1 = a%SIZE;
+            const r2 = Math.floor(b/SIZE), c2 = b%SIZE;
+            return (Math.abs(r1-r2) === 1 && c1===c2) || (r1===r2 && Math.abs(c1-c2)===1);
+        }
 
-            const mouseX = event.clientX || (event.touches ? event.touches[0].clientX : 0);
-            const mouseY = event.clientY || (event.touches ? event.touches[0].clientY : 0);
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchmove', e => { e.preventDefault(); handleMove(e); }, {passive: false});
+        document.addEventListener('touchend', endDrag);
 
-            // Проверка: находится ли курсор внутри какой-либо клетки
+        function handleMove(e) {
+            if(dragIdx === -1) return;
+            const mx = e.clientX || e.touches[0].clientX;
+            const my = e.clientY || e.touches[0].clientY;
+            
             const cells = document.querySelectorAll('.cell:not(.dragging-source)');
-            let foundTarget = false;
-
-            cells.forEach(cell => {
-                const rect = cell.getBoundingClientRect();
-                // Небольшая зона допуска, чтобы не дергалось
-                if (mouseX >= rect.left && mouseX <= rect.right && 
-                    mouseY >= rect.top && mouseY <= rect.bottom) {
-                    
-                    const targetIndex = Array.from(document.querySelectorAll('.cell')).indexOf(cell);
-                    
-                    if (areNeighbors(activeDragIndex, targetIndex)) {
-                        cell.classList.add('possible-target');
-                        foundTarget = true;
+            let found = false;
+            cells.forEach(c => {
+                const r = c.getBoundingClientRect();
+                if(mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom) {
+                    const tIdx = Array.from(document.querySelectorAll('.cell')).indexOf(c);
+                    if(isNeighbor(dragIdx, tIdx)) {
+                        c.classList.add('possible-target');
+                        found = true;
                     }
                 } else {
-                    cell.classList.remove('possible-target');
+                    c.classList.remove('possible-target');
+                }
+            });
+            if(!found) cells.forEach(c => c.classList.remove('possible-target'));
+        }
+
+        function endDrag(e) {
+            if(dragIdx === -1) return;
+            
+            // Определяем цель по координатам мыши/пальца
+            const mx = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            const my = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            
+            let targetIdx = -1;
+            const allCells = Array.from(document.querySelectorAll('.cell'));
+            allCells.forEach((c, i) => {
+                const r = c.getBoundingClientRect();
+                if(mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom) {
+                    targetIdx = i;
                 }
             });
 
-            if(!foundTarget) {
-                 // Если мышь ушла с поля или на пустую клетку - убираем подсветку всех
-                 cells.forEach(c => c.classList.remove('possible-target'));
-            }
-        }
-
-        function endDrag(event) {
-            if (!isDragging || activeDragIndex === null) return;
-
-            const cells = Array.from(document.querySelectorAll('.cell'));
-            const startCellData = grid[activeDragIndex];
-            
-            let targetIndex = -1;
-            
-            // ОПТИМИЗАЦИЯ: Определяем целевую клетку по координатам мыши в момент отпускания.
-            // Это надежно работает даже если классы успели сброситься.
-            const mouseX = event.clientX || (event.touches ? event.touches[0].clientX : 0);
-            const mouseY = event.clientY || (event.touches ? event.touches[0].clientY : 0);
-
-            for (const cell of cells) {
-                const rect = cell.getBoundingClientRect();
-                if (mouseX >= rect.left && mouseX <= rect.right && 
-                    mouseY >= rect.top && mouseY <= rect.bottom) {
-                    
-                    const idx = cells.indexOf
-                                        (cell);
-                    targetIndex = idx;
-                    break; // Нашли клетку под мышкой, дальше не ищем
-                }
-            }
-
-            // Если не нашли клетку под мышкой или она не соседняя — сброс
-            if (targetIndex === -1 || !areNeighbors(activeDragIndex, targetIndex)) {
-                finishDrag(false);
+            // Проверка: сосед ли это?
+            if(targetIdx === -1 || !isNeighbor(dragIdx, targetIdx)) {
+                resetDrag();
                 return;
             }
 
-            const targetCellData = grid[targetIndex];
+            const src = grid[dragIdx];
+            const dst = grid[targetIdx];
+            let valid = true;
+            let msg = "";
+            let mType = "normal";
 
-            // Логика взаимодействия
-            let moveValid = true;
-            let messageText = "";
-            let msgType = "normal";
-
-            if (startCellData.type === 'money' && targetCellData.type === 'money') {
-                // Слияние денег
-                if (startCellData.level === targetCellData.level) {
-                    const nextLevel = startCellData.level + 1;
-                    if (nextLevel < MONEY_LEVELS.length) {
-                        const newValue = MONEY_LEVELS[nextLevel];
-                        grid[targetIndex] = { ...newValue, type: 'money', level: nextLevel };
-                        
-                        // Начисляем очки (стоимость новой фишки)
-                        score += newValue.val;
-                        messageText = `Слияние! Получено ${newValue.name}`;
-                        msgType = 'success';
-                    } else {
-                        // Максимальный уровень достигнут
-                        grid[targetIndex] = { ...MONEY_LEVELS[MONEY_LEVELS.length - 1], type: 'money', level: MONEY_LEVELS.length - 1 };
-                        score += 999999;
-                        messageText = "ПРЕЗИДЕНТ! Максимум очков!";
-                        msgType = 'success';
-                    }
-                    // Исходная клетка становится пустой
-                    grid[activeDragIndex] = generateEmptyCell();
+            if(src.type === 'money' && dst.type === 'money') {
+                if(src.lvl === dst.lvl) {
+                    let nextLvl = src.lvl + 1;
+                    if(nextLvl >= MONEY.length) nextLvl = MONEY.length - 1;
+                    
+                    grid[targetIdx] = {...MONEY[nextLvl], type:'money', lvl:nextLvl};
+                    score += MONEY[nextLvl].v;
+                    grid[dragIdx] = {...NEUT[1], type:'neutral', lvl:-2}; // Пустая
+                    msg = `Слияние! Получено ${grid[targetIdx].n}`;
+                    mType = 'success';
                 } else {
-                    moveValid = false;
-                    messageText = "Можно сливать только одинаковые номиналы!";
-                    msgType = 'error';
+                    valid = false;
+                    msg = "Можно сливать только одинаковые!";
+                    mType = 'error';
                 }
             } 
-            else if (startCellData.type === 'thief') {
-                // Вор крадет деньги у соседа
-                if (targetCellData.type === 'money') {
-                    score -= targetCellData.val; // Штраф
-                    grid[targetIndex] = generateEmptyCell(); // Деньги исчезают
-                    grid[activeDragIndex] = generateRandomCell(); // Вор исчезает, появляется случайный объект
-                    messageText = "Вор украл деньги! Баланс уменьшен.";
-                    msgType = 'error';
-                } else {
-                    moveValid = false;
-                }
-            }
-            else if (startCellData.type === 'debt') {
-                // Долг передается соседу
-                grid[targetIndex] = startCellData;
-                grid[activeDragIndex] = generateEmptyCell();
-                messageText = "Ты передал свой долг другому!";
-                msgType = 'error';
-            }
-            else if (targetCellData.type === 'safe') {
-                // Копилка защищает: если туда кинуть вора или долг, они исчезают
-                if (startCellData.type === 'thief' || startCellData.type === 'debt') {
-                    grid[activeDragIndex] = generateEmptyCell();
-                    messageText = "Копилка спасла ситуацию! Опасность нейтрализована.";
-                    msgType = 'success';
-                } else if (startCellData.type === 'money') {
-                     // Деньги в копилку (просто меняются местами или остаются)
-                     grid[activeDragIndex] = targetCellData;
-                     grid[targetIndex] = startCellData;
-                     messageText = "Деньги в безопасности.";
-                }
+            else if (src.type === 'bad' && src.t === 'thief') {
+                // Вор крадет у денег
+                if(dst.type === 'money') {
+                    score -= dst.v;
+                    grid[targetIdx] = {...NEUT[1], type:'neutral', lvl:-2};
+                    grid[dragIdx] = randomCell(); // Вор исчезает
+                    msg = "Вор украл деньги!";
+                    mType = 'error';
+                } else valid = false;
             }
             else {
-                // Простое перемещение (если типы разные и нет спец логики)
-                // Или обмен местами
-                const temp = grid[activeDragIndex];
-                grid[activeDragIndex] = grid[targetIndex];
-                grid[targetIndex] = temp;
-                messageText = "Ход сделан.";
+                // Простое перемещение (обмен местами или сброс на пустую)
+                if(dst.type !== 'empty') {
+                    [grid[dragIdx], grid[targetIdx]] = [grid[targetIdx], grid[dragIdx]];
+                } else {
+                    grid[targetIdx] = src;
+                    grid[dragIdx] = {...NEUT[1], type:'neutral', lvl:-2};
+                }
+                msg = "Ход сделан";
             }
 
+            resetDrag();
             updateScore();
-            renderGrid();
+            render();
             
-            if (!moveValid) {
-                showMessage(messageText, 'error');
-                finishDrag(false);
-            } else {
-                showMessage(messageText, msgType);
-                finishDrag(true);
-                checkGameOver();
-            }
+            if(!valid) showMsg(msg, 'error');
+            else showMsg(msg, mType);
         }
 
-        function finishDrag(success) {
-            isDragging = false;
-            activeDragIndex = null;
-            const cells = document.querySelectorAll('.cell');
-            cells.forEach(c => {
-                c.classList.remove('dragging-source');
-                c.classList.remove('possible-target');
+        function resetDrag() {
+            dragIdx = -1;
+            document.querySelectorAll('.cell').forEach(c => {
+                c.classList.remove('dragging-source', 'possible-target');
             });
         }
 
-        // Проверка: являются ли клетки соседями (по вертикали или горизонтали)
-        function areNeighbors(idx1, idx2) {
-            const r1 = Math.floor(idx1 / GRID_SIZE);
-            const c1 = idx1 % GRID_SIZE;
-            const r2 = Math.floor(idx2 / GRID_SIZE);
-            const c2 = idx2 % GRID_SIZE;
-
-            const rowDiff = Math.abs(r1 - r2);
-            const colDiff = Math.abs(c1 - c2);
-
-            return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
-        }
-
-        function generateEmptyCell() {
-            return { ...NEUTRAL_TYPES.find(n => n.type === 'empty'), type: 'empty', level: -2 };
-        }
-
-        // Проверка на конец игры: нет ли возможных ходов?
-        function checkGameOver() {
-            // Ищем любые две соседние одинаковые деньги
-            for (let i = 0; i < grid.length; i++) {
-                if (grid[i].type !== 'money') continue;
-                
-                const neighbors = getNeighborIndices(i);
-                for (const nIdx of neighbors) {
-                    if (grid[nIdx].type === 'money' && grid[nIdx].level === grid[i].level) {
-                        return; // Ходы есть
-                    }
-                }
-            }
-            // Если цикл завершился без возврата — ходов нет
-            setTimeout(() => {
-                showMessage("Игра окончена! Больше нет возможных слияний.", 'error');
-            }, 500);
-        }
-
-        function getNeighborIndices(index) {
-            const neighbors = [];
-            const r = Math.floor(index / GRID_SIZE);
-            const c = index % GRID_SIZE;
-
-            if (r > 0) neighbors.push(index - GRID_SIZE); // Верх
-            if (r < GRID_SIZE - 1) neighbors.push(index + GRID_SIZE); // Низ
-            if (c > 0) neighbors.push(index - 1); // Лево
-            if (c < GRID_SIZE - 1) neighbors.push(index + 1); // Право
-
-            return neighbors;
-        }
-
-        // Публичные методы для кнопки "Начать заново"
-        return {
-            restart: () => {
-                initGame();
-                showMessage("Новая игра началась!", 'success');
-            }
-        };
+        return { restart: init };
     })();
 
-    // Запуск игры при загрузке страницы
-    document.addEventListener('DOMContentLoaded', () => {
-        Game.restart();
-        
-        // Глобальные слушатели для Drag & Drop (чтобы ловить движение мыши вне клетки)
-        document.addEventListener('mousemove', handleDragMove);
-        document.addEventListener('mouseup', endDrag);
-        
-        document.addEventListener('touchmove', (e) => {
-            e.preventDefault(); 
-            handleDragMove(e);
-        }, {passive: false});
-        
-        document.addEventListener('touchend', endDrag);
-    });
+    // Старт при загрузке
+    document.addEventListener('DOMContentLoaded', () => Game.restart());
 </script>
 </body>
 </html>
