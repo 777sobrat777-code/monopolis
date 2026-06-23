@@ -1,311 +1,568 @@
+# Денежное Слияние 2048
+
+## index.html
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Денежное Слияние</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Денежное Слияние 2048</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', sans-serif; 
-            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-            min-height: 100vh; display: flex; flex-direction: column; align-items: center; 
-            padding: 15px; user-select: none; -webkit-user-select: none;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 10px;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 8px;
+        }
+        h1 {
+            font-size: 1.4em;
+            color: #f1c40f;
+            letter-spacing: 1px;
+        }
+        .score-box {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 6px 14px;
+            text-align: center;
+        }
+        .score-label {
+            font-size: 0.65em;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+        .score-value {
+            font-size: 1.4em;
+            font-weight: 900;
+            color: #fff;
+        }
+        .best-box {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 6px 14px;
+            text-align: center;
+        }
+        .best-label {
+            font-size: 0.65em;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+        .best-value {
+            font-size: 1.4em;
+            font-weight: 900;
+            color: #f1c40f;
+        }
+        .game-container {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            position: relative;
             touch-action: none;
         }
-        h1 { font-size: 1.6em; margin: 10px 0; color: #f1c40f; text-shadow: 0 0 10px rgba(241,196,15,0.3); letter-spacing: 1px; }
-        .score-wrap { 
-            font-size: 1.3em; margin-bottom: 15px; 
-            background: rgba(0,0,0,0.4); padding: 8px 20px; border-radius: 20px;
+        .grid-bg {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+            gap: 6px;
         }
-        #score { font-weight: bold; color: #2ecc71; }
-        .grid { 
-            display: grid; grid-template-columns: repeat(5, 70px); grid-template-rows: repeat(5, 70px);
-            gap: 4px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 12px;
-            margin-bottom: 20px;
+        .cell-bg {
+            aspect-ratio: 1;
+            background: #0f3460;
+            border-radius: 6px;
+            min-width: 52px;
+            min-height: 52px;
         }
-        .cell { 
-            width: 70px; height: 70px; 
-            display: flex; align-items: center; justify-content: center; 
-            font-weight: bold; font-size: 0.85em; text-align: center;
-            border-radius: 8px; cursor: grab; 
-            transition: transform 0.15s, opacity 0.2s;
-            position: relative;
+        .tiles-layer {
+            position: absolute;
+            top: 8px; left: 8px; right: 8px; bottom: 8px;
+            pointer-events: none;
         }
-        .cell:active { cursor: grabbing; }
-        .cell.dragging-source { opacity: 0.35; transform: scale(0.85); z-index: 0; }
-        .cell.possible-target { outline: 3px solid #f1c40f; outline-offset: 2px; transform: scale(1.08); z-index: 2; }
-
-        .lvl-1  { background: #27ae60; color: #fff; }  /* 10 ₽ */
-        .lvl-2  { background: #2ecc71; color: #000; }  /* 50 ₽ */
-        .lvl-3  { background: #f1c40f; color: #000; }  /* 100 ₽ */
-        .lvl-4  { background: #f39c12; color: #fff; }  /* 200 ₽ */
-        .lvl-5  { background: #e67e22; color: #fff; }  /* 500 ₽ */
-        .lvl-6  { background: #e74c3c; color: #fff; }  /* 1000 ₽ */
-        .lvl-7  { background: #8e44ad; color: #fff; }  /* 5000 ₽ */
-        .lvl-8  { background: #2c3e50; color: #f1c40f; border: 2px solid #f1c40f; }  /* 10 000 ₽ */
-        .lvl-9  { background: linear-gradient(135deg, #7f8c8d, #bdc3c7); color: #000; }  /* 50 000 ₽ */
-        .lvl-10 { background: linear-gradient(135deg, #34495e, #2c3e50); color: #ecf0f1; border: 2px solid #ecf0f1; }  /* 100 000 ₽ */
-        .lvl-11 { background: linear-gradient(135deg, #f1c40f, #e67e22); color: #000; font-size: 0.95em; font-weight: 900; text-transform: uppercase; animation: pulse 1s infinite; }  /* 500 000 ₽ WIN */
-
-        @keyframes pulse { 0%,100% { box-shadow: 0 0 10px #f1c40f; } 50% { box-shadow: 0 0 25px #f39c12, 0 0 40px #f1c40f; } }
-
-        .empty { background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); cursor: default; pointer-events: auto; }
-
-        button { 
-            padding: 14px 35px; font-size: 1.1em; 
-            background: #f1c40f; color: #1a1a2e; 
-            border: none; border-radius: 30px; cursor: pointer; font-weight: bold; 
-            transition: all 0.2s;
+        .tile {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            border-radius: 6px;
+            transition: transform 0.12s ease, left 0.12s ease, top 0.12s ease;
+            z-index: 1;
+            line-height: 1.1;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
-        button:active { transform: scale(0.95); background: #e67e22; }
-
-        .msg { 
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-120%); 
-            background: rgba(0,0,0,0.85); color: #fff; padding: 12px 25px; 
-            border-radius: 25px; font-weight: bold; z-index: 100; 
-            transition: transform 0.3s ease; pointer-events: none;
+        .tile.merged {
+            z-index: 2;
+            transform: scale(1.15);
+            transition: transform 0.1s ease;
         }
-        .msg.show { transform: translateX(-50%) translateY(0); }
-        .msg.win { background: #f1c40f; color: #000; font-size: 1.2em; }
+        .tile.new {
+            animation: pop-in 0.18s ease;
+        }
+        @keyframes pop-in {
+            0% { transform: scale(0); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .msg-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .msg-overlay.hidden { display: none; }
+        .msg-text {
+            font-size: 1.6em;
+            font-weight: 900;
+            color: #f1c40f;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(241,196,15,0.5);
+        }
+        .msg-sub {
+            font-size: 1em;
+            color: #ccc;
+        }
+        button {
+            padding: 14px 36px;
+            font-size: 1.1em;
+            background: #f1c40f;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 900;
+            letter-spacing: 1px;
+            transition: background 0.2s;
+        }
+        button:active { background: #d4a80b; }
+        .btn-small {
+            padding: 10px 24px;
+            font-size: 0.9em;
+            margin-top: 4px;
+        }
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
 
-        .drag-ghost { 
-            position: fixed; pointer-events: none; z-index: 999; 
-            width: 70px; height: 70px; border-radius: 8px; 
-            display: flex; align-items: center; justify-content: center; 
-            font-weight: bold; font-size: 0.85em; opacity: 0.9; 
-            transform: translate(-50%, -50%); 
-            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+        /* Цвета объектов */
+        .t-1  { background: #2ecc71; color: #0a3d1f; font-size: 1.2em; }
+        .t-2  { background: #27ae60; color: #fff; font-size: 1.2em; }
+        .t-5  { background: #f9e74a; color: #5c4a00; font-size: 1.2em; }
+        .t-10 { background: #f39c12; color: #fff; font-size: 1.2em; }
+        .t-100 { background: #e67e22; color: #fff; font-size: 1.1em; }
+        .t-500 { background: #d35400; color: #fff; font-size: 1.1em; }
+        .t-1000 { background: #c0392b; color: #fff; font-size: 1em; }
+        .t-2000 { background: #8e1a2b; color: #fff; font-size: 1em; }
+        .t-5000 { background: #7d3c98; color: #fff; font-size: 1em; }
+        .t-10000 { background: #4a235a; color: #f1c40f; font-size: 0.95em; border: 2px solid #f1c40f; }
+
+        .t-bcase { background: #6b4226; color: #f5deb3; font-size: 0.75em; border: 2px solid #8b5a2b; }
+        .t-gcase { background: linear-gradient(135deg, #b8860b, #ffd700, #daa520); color: #3e2700; font-size: 0.75em; font-weight: 900; border: 2px solid #ffd700; text-shadow: 0 0 4px rgba(255,215,0,0.5); }
+        .t-gbar  { background: linear-gradient(135deg, #ffd700, #ffaa00, #ffd700); color: #3e2700; font-size: 0.7em; font-weight: 900; border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,215,0,0.6); }
+        .t-gbars { background: linear-gradient(135deg, #ffd700, #f1c40f, #ffaa00, #ffd700); color: #2c1a00; font-size: 0.65em; font-weight: 900; border: 2px solid #fff; box-shadow: 0 0 14px rgba(255,215,0,0.8); }
+        .t-merc  { background: #111; color: #ccc; font-size: 0.7em; border: 2px solid #555; text-shadow: 0 0 6px rgba(255,255,255,0.3); }
+        .t-bank  { background: linear-gradient(180deg, #1a237e, #283593, #1a237e); color: #ffd700; font-size: 0.85em; border: 2px solid #ffd700; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 6px rgba(255,215,0,0.4); }
+        .t-magn  { background: linear-gradient(135deg, #e74c3c, #f1c40f, #2ecc71, #3498db, #9b59b6); color: #fff; font-size: 0.85em; font-weight: 900; border: 3px solid #fff; box-shadow: 0 0 20px rgba(255,255,255,0.5); animation: magn-glow 1.5s ease-in-out infinite alternate; text-shadow: 0 0 8px rgba(0,0,0,0.5); }
+        @keyframes magn-glow {
+            0% { box-shadow: 0 0 12px rgba(241,196,15,0.6); }
+            100% { box-shadow: 0 0 24px rgba(255,255,255,0.9); }
         }
     </style>
 </head>
 <body>
 
-    <h1>💸 Денежное Слияние</h1>
-    <div class="msg" id="msg"></div>
-    <div class="score-wrap">Баланс: <span id="score">0</span> ₽</div>
-    
-    <div class="grid" id="game-grid"></div>
-    <button onclick="Game.restart()">🔄 Начать заново</button>
+    <div class="header">
+        <div style="display:flex;gap:8px;">
+            <div class="score-box">
+                <div class="score-label">Счёт</div>
+                <div class="score-value" id="score">0</div>
+            </div>
+            <div class="best-box">
+                <div class="best-label">Рекорд</div>
+                <div class="best-value" id="best">0</div>
+            </div>
+        </div>
+        <button class="btn-small" onclick="Game.restart()">Заново</button>
+    </div>
+
+    <div class="game-container" id="gameContainer">
+        <div class="grid-bg" id="gridBg"></div>
+        <div class="tiles-layer" id="tilesLayer"></div>
+    </div>
+
+    <div class="controls">
+        <span style="color:#aaa;font-size:0.75em;">←↑↓→ свайпами или стрелками</span>
+    </div>
+
+    <!-- Оверлей победы -->
+    <div class="msg-overlay hidden" id="winOverlay">
+        <div class="msg-text">🏆 МАГНАТ!</div>
+        <div class="msg-sub">Ты собрал империю. Счёт: <span id="winScore">0</span></div>
+        <button onclick="Game.restart()">Играть ещё</button>
+    </div>
+
+    <!-- Оверлей поражения -->
+    <div class="msg-overlay hidden" id="loseOverlay">
+        <div class="msg-text">😵 Ходов нет</div>
+        <div class="msg-sub">Поле забито. Счёт: <span id="loseScore">0</span></div>
+        <button onclick="Game.restart()">Попробовать снова</button>
+    </div>
 
 <script>
-const Game = (function() {
-    const SIZE = 5;
-    const MAX_LVL = 11;
-    const NAMES  = ['','10₽','50₽','100₽','200₽','500₽','1000₽','5000₽','10 000₽','50 000₽','100 000₽','500 000₽'];
-    const VALUES = [0,10,50,100,200,500,1000,5000,10000,50000,100000,500000];
+(function() {
+    const SIZE = 6;
+    const GAP = 6;
+    const PAD = 8;
 
-    let grid = [];
+    // Иерархия: уровень → {название, css-класс, очки за слияние}
+    const LEVELS = [
+        { id: 0,  name: '1₽',        cls: 't-1',     pts: 1,     spawn: true,  weight: 40 },
+        { id: 1,  name: '2₽',        cls: 't-2',     pts: 2,     spawn: true,  weight: 30 },
+        { id: 2,  name: '5₽',        cls: 't-5',     pts: 5,     spawn: true,  weight: 18 },
+        { id: 3,  name: '10₽',       cls: 't-10',    pts: 10,    spawn: true,  weight: 10 },
+        { id: 4,  name: '100₽',      cls: 't-100',   pts: 100,   spawn: true,  weight: 2 },
+        { id: 5,  name: '500₽',      cls: 't-500',   pts: 500,   spawn: false, weight: 0 },
+        { id: 6,  name: '1 000₽',    cls: 't-1000',  pts: 1000,  spawn: false, weight: 0 },
+        { id: 7,  name: '2 000₽',    cls: 't-2000',  pts: 2000,  spawn: false, weight: 0 },
+        { id: 8,  name: '5 000₽',    cls: 't-5000',  pts: 5000,  spawn: false, weight: 0 },
+        { id: 9,  name: '10 000₽',   cls: 't-10000', pts: 10000, spawn: false, weight: 0 },
+        { id: 10, name: 'Чемодан',   cls: 't-bcase', pts: 15000, spawn: false, weight: 0 },
+        { id: 11, name: 'Зол. чемодан', cls: 't-gcase', pts: 25000, spawn: false, weight: 0 },
+        { id: 12, name: 'Слиток',    cls: 't-gbar',  pts: 50000, spawn: false, weight: 0 },
+        { id: 13, name: 'Слитки',    cls: 't-gbars', pts: 100000, spawn: false, weight: 0 },
+        { id: 14, name: 'Мерседес',  cls: 't-merc',  pts: 250000, spawn: false, weight: 0 },
+        { id: 15, name: 'Банк',      cls: 't-bank',  pts: 500000, spawn: false, weight: 0 },
+        { id: 16, name: 'Магнат',    cls: 't-magn',  pts: 1000000, spawn: false, weight: 0 }
+    ];
+    const MAX_LEVEL = LEVELS.length - 1; // 16 = Магнат
+    const WIN_LEVEL = MAX_LEVEL;
+
+    let grid = [];       // grid[row][col] = level id или null
     let score = 0;
+    let best = 0;
     let won = false;
-    const gridEl = document.getElementById('game-grid');
+    let gameOver = false;
+    let tileSize = 0;
+
     const scoreEl = document.getElementById('score');
-    const msgEl = document.getElementById('msg');
+    const bestEl = document.getElementById('best');
+    const gridBg = document.getElementById('gridBg');
+    const tilesLayer = document.getElementById('tilesLayer');
+    const gameContainer = document.getElementById('gameContainer');
+    const winOverlay = document.getElementById('winOverlay');
+    const loseOverlay = document.getElementById('loseOverlay');
 
-    let dragLvl = 0;
-    let dragRow = -1, dragCol = -1;
-    let ghostEl = null;
+    // Локальное хранилище рекорда
+    try { best = parseInt(localStorage.getItem('merge2048_best')) || 0; } catch(e) {}
+    bestEl.textContent = best;
 
-    function init() {
-        grid = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
-        score = 0;
-        won = false;
-        // Fill ~60% cells with levels 1-3
-        for (let r = 0; r < SIZE; r++) {
-            for (let c = 0; c < SIZE; c++) {
-                if (Math.random() < 0.6) {
-                    grid[r][c] = Math.floor(Math.random() * 3) + 1;
-                }
-            }
-        }
-        updateScore();
-        render();
+    function calcTileSize() {
+        const w = gameContainer.clientWidth;
+        tileSize = Math.floor((w - PAD * 2 - GAP * (SIZE + 1)) / SIZE);
     }
 
-    function updateScore() {
-        score = 0;
-        for (let r = 0; r < SIZE; r++)
-            for (let c = 0; c < SIZE; c++)
-                score += VALUES[grid[r][c]];
-        scoreEl.textContent = score.toLocaleString('ru-RU');
+    function buildBg() {
+        gridBg.innerHTML = '';
+        for (let i = 0; i < SIZE * SIZE; i++) {
+            const div = document.createElement('div');
+            div.className = 'cell-bg';
+            gridBg.appendChild(div);
+        }
+    }
+
+    function tilePos(row, col) {
+        return {
+            left: PAD + col * (tileSize + GAP) + GAP,
+            top: PAD + row * (tileSize + GAP) + GAP
+        };
     }
 
     function render() {
-        gridEl.innerHTML = '';
+        tilesLayer.innerHTML = '';
+        const frag = document.createDocumentFragment();
         for (let r = 0; r < SIZE; r++) {
             for (let c = 0; c < SIZE; c++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
                 const lvl = grid[r][c];
-                if (lvl > 0) {
-                    cell.classList.add('lvl-' + lvl);
-                    cell.textContent = NAMES[lvl];
-                    cell.dataset.lvl = lvl;
-                } else {
-                    cell.classList.add('empty');
-                }
-                cell.dataset.row = r;
-                cell.dataset.col = c;
-                cell.addEventListener('pointerdown', onPointerDown);
-                gridEl.appendChild(cell);
+                if (lvl === null) continue;
+                const info = LEVELS[lvl];
+                const pos = tilePos(r, c);
+                const div = document.createElement('div');
+                div.className = 'tile ' + info.cls;
+                div.textContent = info.name;
+                div.style.left = pos.left + 'px';
+                div.style.top = pos.top + 'px';
+                div.style.width = tileSize + 'px';
+                div.style.height = tileSize + 'px';
+                div.style.fontSize = (tileSize * 0.22) + 'px';
+                div.dataset.row = r;
+                div.dataset.col = c;
+                div.dataset.lvl = lvl;
+                div.dataset.merged = '0';
+                div.dataset.isNew = '0';
+                frag.appendChild(div);
             }
         }
+        tilesLayer.appendChild(frag);
     }
 
-    function onPointerDown(e) {
-        if (won) return;
-        const cell = e.currentTarget;
-        const lvl = parseInt(cell.dataset.lvl) || 0;
-        if (lvl === 0) return;
-
-        dragLvl = lvl;
-        dragRow = parseInt(cell.dataset.row);
-        dragCol = parseInt(cell.dataset.col);
-
-        // Mark source
-        cell.classList.add('dragging-source');
-
-        // Create ghost
-        ghostEl = document.createElement('div');
-        ghostEl.className = 'drag-ghost lvl-' + lvl;
-        ghostEl.textContent = NAMES[lvl];
-        ghostEl.style.left = e.clientX + 'px';
-        ghostEl.style.top = e.clientY + 'px';
-        document.body.appendChild(ghostEl);
-
-        // Highlight valid targets
-        const allCells = gridEl.querySelectorAll('.cell');
-        allCells.forEach(c => {
-            const r = parseInt(c.dataset.row);
-            const col = parseInt(c.dataset.col);
-            if (r === dragRow && col === dragCol) return;
-            if (grid[r][col] === 0 || grid[r][col] === lvl) {
-                c.classList.add('possible-target');
-            }
-        });
-
-        document.addEventListener('pointermove', onPointerMove);
-        document.addEventListener('pointerup', onPointerUp);
-        document.addEventListener('pointercancel', onPointerUp);
-        e.preventDefault();
+    function renderTileAnimated(r, c, merged, isNew) {
+        const lvl = grid[r][c];
+        if (lvl === null) return;
+        const info = LEVELS[lvl];
+        const pos = tilePos(r, c);
+        const div = document.createElement('div');
+        div.className = 'tile ' + info.cls + (merged ? ' merged' : '') + (isNew ? ' new' : '');
+        div.textContent = info.name;
+        div.style.left = pos.left + 'px';
+        div.style.top = pos.top + 'px';
+        div.style.width = tileSize + 'px';
+        div.style.height = tileSize + 'px';
+        div.style.fontSize = (tileSize * 0.22) + 'px';
+        tilesLayer.appendChild(div);
     }
 
-    function onPointerMove(e) {
-        if (!ghostEl) return;
-        ghostEl.style.left = e.clientX + 'px';
-        ghostEl.style.top = e.clientY + 'px';
-
-        // Check which cell we're over
-        const elem = document.elementFromPoint(e.clientX, e.clientY);
-        if (elem && elem.classList.contains('possible-target')) {
-            elem.style.outline = '3px solid #2ecc71';
-        }
-        // Reset others
-        document.querySelectorAll('.possible-target').forEach(el => {
-            if (el !== elem) el.style.outline = '';
-        });
-    }
-
-    function onPointerUp(e) {
-        document.removeEventListener('pointermove', onPointerMove);
-        document.removeEventListener('pointerup', onPointerUp);
-        document.removeEventListener('pointercancel', onPointerUp);
-
-        if (ghostEl) { ghostEl.remove(); ghostEl = null; }
-
-        // Get target cell
-        let targetCell = null;
-        if (e.type !== 'pointercancel') {
-            const elem = document.elementFromPoint(e.clientX, e.clientY);
-            if (elem && elem.classList.contains('possible-target')) {
-                targetCell = elem;
+    function renderFull(mergeMap, newMap) {
+        tilesLayer.innerHTML = '';
+        const frag = document.createDocumentFragment();
+        for (let r = 0; r < SIZE; r++) {
+            for (let c = 0; c < SIZE; c++) {
+                const lvl = grid[r][c];
+                if (lvl === null) continue;
+                const info = LEVELS[lvl];
+                const pos = tilePos(r, c);
+                const merged = mergeMap && mergeMap[r] && mergeMap[r][c];
+                const isNew = newMap && newMap[r] && newMap[r][c];
+                const div = document.createElement('div');
+                div.className = 'tile ' + info.cls + (merged ? ' merged' : '') + (isNew ? ' new' : '');
+                div.textContent = info.name;
+                div.style.left = pos.left + 'px';
+                div.style.top = pos.top + 'px';
+                div.style.width = tileSize + 'px';
+                div.style.height = tileSize + 'px';
+                div.style.fontSize = (tileSize * 0.22) + 'px';
+                frag.appendChild(div);
             }
         }
-
-        // Cleanup highlights
-        document.querySelectorAll('.possible-target').forEach(el => el.style.outline = '');
-        document.querySelectorAll('.dragging-source').forEach(el => el.classList.remove('dragging-source'));
-        document.querySelectorAll('.possible-target').forEach(el => el.classList.remove('possible-target'));
-
-        if (!targetCell) { dragLvl = 0; dragRow = dragCol = -1; return; }
-
-        const tr = parseInt(targetCell.dataset.row);
-        const tc = parseInt(targetCell.dataset.col);
-        const targetLvl = grid[tr][tc];
-
-        if (targetLvl === dragLvl && dragLvl < MAX_LVL) {
-            // MERGE!
-            grid[tr][tc] = dragLvl + 1;
-            grid[dragRow][dragCol] = 0;
-            updateScore();
-            render();
-            showMsg('+' + NAMES[dragLvl + 1] + '!', 'success');
-
-            if (dragLvl + 1 === MAX_LVL) {
-                won = true;
-                setTimeout(() => showMsg('🏆 ПОБЕДА! 500 000 ₽! 🏆', 'win'), 300);
-            }
-
-            // Spawn new random item if grid not full
-            spawnRandom();
-        } else if (targetLvl === 0) {
-            // Move to empty
-            grid[tr][tc] = dragLvl;
-            grid[dragRow][dragCol] = 0;
-            render();
-            spawnRandom();
-        } else {
-            // Invalid target
-            showMsg('Можно только на такой же или пустую!', 'error');
-            render();
-        }
-
-        dragLvl = 0;
-        dragRow = dragCol = -1;
+        tilesLayer.appendChild(frag);
     }
 
-    function spawnRandom() {
-        const empties = [];
+    function emptyCells() {
+        const cells = [];
         for (let r = 0; r < SIZE; r++)
             for (let c = 0; c < SIZE; c++)
-                if (grid[r][c] === 0) empties.push([r, c]);
+                if (grid[r][c] === null) cells.push({r, c});
+        return cells;
+    }
 
-        if (empties.length === 0) {
-            showMsg('Нет места! Сливай одинаковые.', 'error');
-            return;
+    function spawnTile() {
+        const empty = emptyCells();
+        if (empty.length === 0) return false;
+        const pos = empty[Math.floor(Math.random() * empty.length)];
+
+        // Выбор уровня для спавна: только spawn:true, с весами
+        const spawnable = LEVELS.filter(l => l.spawn);
+        const totalWeight = spawnable.reduce((s, l) => s + l.weight, 0);
+        let roll = Math.random() * totalWeight;
+        let chosen = spawnable[0];
+        for (const l of spawnable) {
+            roll -= l.weight;
+            if (roll <= 0) { chosen = l; break; }
         }
+        grid[pos.r][pos.c] = chosen.id;
+        return { r: pos.r, c: pos.c, lvl: chosen.id };
+    }
 
-        const [r, c] = empties[Math.floor(Math.random() * empties.length)];
-        // Spawn level 1 (70%) or 2 (30%)
-        grid[r][c] = Math.random() < 0.7 ? 1 : 2;
-        updateScore();
+    function initGrid() {
+        grid = Array.from({length: SIZE}, () => Array(SIZE).fill(null));
+        score = 0;
+        won = false;
+        gameOver = false;
+        winOverlay.classList.add('hidden');
+        loseOverlay.classList.add('hidden');
+        scoreEl.textContent = '0';
+        spawnTile();
+        spawnTile();
         render();
     }
 
-    function showMsg(text, type) {
-        msgEl.textContent = text;
-        msgEl.className = 'msg ' + (type || '');
-        msgEl.classList.add('show');
-        clearTimeout(msgEl._timeout);
-        msgEl._timeout = setTimeout(() => msgEl.classList.remove('show'), 1500);
-    }
-
-    function restart() {
-        init();
-        showMsg('Новая игра!', 'success');
-    }
-
-    // Init on load
-    init();
-
-    // Prevent scroll on drag
-    document.addEventListener('touchmove', function(e) {
-        if (e.target.closest('.cell') && e.target.closest('.cell').classList.contains('dragging-source')) {
-            e.preventDefault();
+    function canMove() {
+        // Есть ли пустые клетки или соседние одинаковые
+        if (emptyCells().length > 0) return true;
+        for (let r = 0; r < SIZE; r++) {
+            for (let c = 0; c < SIZE; c++) {
+                if (c < SIZE - 1 && grid[r][c] === grid[r][c+1]) return true;
+                if (r < SIZE - 1 && grid[r][c] === grid[r+1][c]) return true;
+            }
         }
-    }, { passive: false });
+        return false;
+    }
 
-    return { restart };
+    function move(dir) {
+        // dir: 0=up, 1=right, 2=down, 3=left
+        if (gameOver || won) return false;
+
+        const vectors = [
+            {dr: -1, dc: 0},  // up
+            {dr: 0, dc: 1},   // right
+            {dr: 1, dc: 0},   // down
+            {dr: 0, dc: -1}   // left
+        ];
+        const v = vectors[dir];
+
+        // Порядок обхода: сдвигаем в направлении движения
+        const rows = [];
+        const cols = [];
+        if (v.dr === 1)  for (let r = SIZE-1; r >= 0; r--) rows.push(r); // down: снизу вверх
+        else             for (let r = 0; r < SIZE; r++) rows.push(r);
+        if (v.dc === 1)  for (let c = SIZE-1; c >= 0; c--) cols.push(c); // right: справа налево
+        else             for (let c = 0; c < SIZE; c++) cols.push(c);
+
+        const merged = Array.from({length: SIZE}, () => Array(SIZE).fill(false));
+        let moved = false;
+
+        for (const r of rows) {
+            for (const c of cols) {
+                if (grid[r][c] === null) continue;
+                let cr = r, cc = c;
+                // Двигаем пока можем
+                while (true) {
+                    const nr = cr + v.dr;
+                    const nc = cc + v.dc;
+                    if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break; // граница
+                    if (grid[nr][nc] === null) {
+                        // Пусто — двигаем
+                        grid[nr][nc] = grid[cr][cc];
+                        grid[cr][cc] = null;
+                        cr = nr; cc = nc;
+                        moved = true;
+                    } else if (grid[nr][nc] === grid[cr][cc] && !merged[nr][nc]) {
+                        // Слияние
+                        const oldLvl = grid[cr][cc];
+                        const newLvl = oldLvl + 1;
+                        grid[nr][nc] = newLvl;
+                        grid[cr][cc] = null;
+                        merged[nr][nc] = true;
+                        score += LEVELS[newLvl].pts;
+                        moved = true;
+                        if (newLvl >= WIN_LEVEL) won = true;
+                        break;
+                    } else {
+                        break; // упёрлись в другой тайл
+                    }
+                }
+            }
+        }
+
+        if (moved) {
+            const newTile = spawnTile();
+            const newMap = Array.from({length: SIZE}, () => Array(SIZE).fill(false));
+            if (newTile) newMap[newTile.r][newTile.c] = true;
+            renderFull(merged, newMap);
+            scoreEl.textContent = score;
+
+            if (!canMove()) {
+                gameOver = true;
+                setTimeout(() => {
+                    document.getElementById('loseScore').textContent = score;
+                    loseOverlay.classList.remove('hidden');
+                }, 400);
+            }
+            if (won && !gameOver) {
+                setTimeout(() => {
+                    document.getElementById('winScore').textContent = score;
+                    winOverlay.classList.remove('hidden');
+                }, 500);
+            }
+            // Сохраняем рекорд
+            if (score > best) {
+                best = score;
+                bestEl.textContent = best;
+                try { localStorage.setItem('merge2048_best', best); } catch(e) {}
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // --- Управление ---
+    let touchStartX = 0, touchStartY = 0;
+
+    gameContainer.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+    }, {passive: false});
+
+    gameContainer.addEventListener('touchend', e => {
+        if (gameOver || won) return;
+        const dx = (e.changedTouches[0]?.clientX || touchStartX) - touchStartX;
+        const dy = (e.changedTouches[0]?.clientY || touchStartY) - touchStartY;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        if (Math.max(absDx, absDy) < 20) return; // слишком короткий свайп
+
+        if (absDx > absDy) {
+            move(dx > 0 ? 1 : 3); // right : left
+        } else {
+            move(dy > 0 ? 2 : 0); // down : up
+        }
+    });
+
+    document.addEventListener('keydown', e => {
+        const map = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 };
+        if (e.key in map) {
+            e.preventDefault();
+            move(map[e.key]);
+        }
+    });
+
+    // --- Публичный API ---
+    window.Game = {
+        restart() {
+            calcTileSize();
+            initGrid();
+        },
+        move
+    };
+
+    // Старт
+    buildBg();
+    calcTileSize();
+    initGrid();
+
+    window.addEventListener('resize', () => {
+        calcTileSize();
+        render();
+    });
 })();
 </script>
 </body>
