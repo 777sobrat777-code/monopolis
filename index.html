@@ -1,197 +1,234 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Монополист</title>
-<style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:#1a1a2e; color:#eee; font-family:system-ui,sans-serif; display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:12px; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
-h1 { font-size:22px; margin-bottom:2px; letter-spacing:2px; }
-.score { font-size:16px; color:#f0c040; margin-bottom:8px; }
-.score span { font-weight:bold; font-size:20px; }
-.board { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; width:min(95vw,420px); aspect-ratio:4/5; background:#16213e; padding:8px; border-radius:14px; }
-.cell { background:#0f3460; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; position:relative; transition:transform .1s; }
-.cell .item { width:90%; height:90%; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:clamp(16px,3.5vw,26px); cursor:grab; position:relative; z-index:1; }
-.cell .item:active { cursor:grabbing; }
-.item.good { background:#1b5e20; box-shadow:0 0 8px #4caf50; }
-.item.bad { background:#5e1b1b; box-shadow:0 0 8px #f44336; }
-.item.goal { background:#e6a800; box-shadow:0 0 16px #ffd600; animation:pulse .7s infinite alternate; }
-@keyframes pulse { from{box-shadow:0 0 8px #ffd600;} to{box-shadow:0 0 20px #ffd600;} }
-.item.dragging { opacity:0.5; }
-.drag-ghost { position:fixed; pointer-events:none; z-index:999; width:clamp(50px,12vw,75px); height:clamp(50px,12vw,75px); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:clamp(20px,4.5vw,34px); opacity:0.9; transform:translate(-50%,-50%); }
-.drag-ghost.good { background:#2e7d32; box-shadow:0 0 12px #4caf50; }
-.drag-ghost.bad { background:#7d2020; box-shadow:0 0 12px #f44336; }
-.controls { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
-button { background:#e94560; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; }
-button:active { transform:scale(.96); }
-.msg { margin-top:8px; font-size:14px; color:#aaa; min-height:20px; }
-</style>
+    <meta charset="UTF-8">
+    <title>Денежное Слияние</title>
+    <style>
+        body { font-family: sans-serif; background: #2c3e50; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        h1 { margin-bottom: 10px; }
+        #score-board { font-size: 1.5em; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(5, 100px); gap: 5px; margin-bottom: 20px; }
+        .cell { 
+            width: 100px; height: 100px; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; font-size: 1.2em; cursor: pointer; 
+            border-radius: 8px; transition: transform 0.2s; position: relative;
+        }
+        .cell:hover { transform: scale(1.05); }
+        
+        /* Цвета для разных уровней */
+        .lvl-1 { background: #2ecc71; color: black; } /* 1 рубль */
+        .lvl-2 { background: #27ae60; color: white; } /* 2 рубля */
+        .lvl-3 { background: #f1c40f; color: black; } /* 5 рублей */
+        .lvl-4 { background: #f39c12; color: white; } /* 10 рублей */
+        .lvl-5 { background: #e67e22; color: white; } /* 100 рублей */
+        .lvl-6 { background: #c0392b; color: white; } /* 500 рублей */
+        .lvl-7 { background: #9b59b6; color: white; } /* 1000 рублей */
+        .lvl-8 { background: #34495e; color: gold; } /* 10000 рублей */
+        .lvl-9 { background: #7f8c8d; color: silver; } /* Чемодан */
+        .lvl-10 { background: #bdc3c7; color: black; } /* Банк */
+        .lvl-11 { background: #d35400; color: white; font-style: italic;} /* Президент */
+
+        /* Отрицательные объекты */
+        .thief { background: #333; color: red; border: 3px dashed red; } /* Вор */
+        .debt { background: #555; color: yellow; } /* Долг */
+        
+        /* Нейтральные объекты */
+        .safe { background: #1abc9c; color: white; border: 3px solid white; } /* Копилка/Сейф */
+        .empty { background: #ecf0f1; color: #aaa; cursor: default; } /* Пустая */
+
+        button { padding: 15px 30px; font-size: 1em; margin-top: 10px; cursor: pointer; background: white; color: black; border: none; border-radius: 5px; }
+        button:hover { background: #f1c40f; }
+    </style>
 </head>
 <body>
-<h1>🏢 Монополист</h1>
-<div class="score">Счёт: <span id="score">0</span></div>
-<div class="board" id="board"></div>
-<div class="controls">
-<button onclick="restart()">🔄 Заново</button>
-</div>
-<div class="msg" id="msg"></div>
+
+    <h1>Денежное Слияние</h1>
+    <div id="score-board">Баланс: <span id="score">0</span> ₽</div>
+    
+    <div class="grid" id="game-grid"></div>
+    <button onclick="restartGame()">Начать заново</button>
 
 <script>
-const GOOD_CHAIN = [
-  {emoji:'💵', label:'100₽', lvl:0},
-  {emoji:'💸', label:'500₽', lvl:1},
-  {emoji:'💰', label:'1000₽', lvl:2},
-  {emoji:'💳', label:'Карта', lvl:3},
-  {emoji:'💼', label:'Кейс', lvl:4},
-];
-const BAD_CHAIN = [
-  {emoji:'📄', label:'Займ', lvl:0},
-  {emoji:'👔', label:'Коллектор',lvl:1},
-  {emoji:'📊', label:'% Ставка', lvl:2},
-];
-const ROWS=4, COLS=5, MAX_ITEMS=18;
-let board=[], score=0, won=false;
-const $board=document.getElementById('board');
-const $score=document.getElementById('score');
-const $msg=document.getElementById('msg');
+    const gridSize = 5; // Размер поля 5x5
+    let grid = [];
+    let selectedCell = null; // Выбранная клетка
+    let score = 0;
+    const scoreEl = document.getElementById('score');
 
-function initBoard(){
-  board=Array.from({length:ROWS},()=>Array(COLS).fill(null));
-  score=0; won=false; $msg.textContent='';
-  spawnInitial(); render();
-}
-function spawnInitial(){ for(let i=0;i<6;i++) spawnRandom(); }
-function emptyCells(){
-  let res=[];
-  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(!board[r][c]) res.push({r,c});
-  return res;
-}
-function spawnRandom(){
-  if(won) return;
-  let total=0; for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(board[r][c]) total++;
-  if(total>=MAX_ITEMS) return;
-  let empty=emptyCells(); if(!empty.length) return;
-  let pos=empty[Math.floor(Math.random()*empty.length)];
-  let good=Math.random()<0.7;
-  board[pos.r][pos.c]={good:good, lvlIdx:0, chain:good?'good':'bad'};
-}
-function getItem(r,c){
-  let cell=board[r][c]; if(!cell) return null;
-  let chain=cell.good?GOOD_CHAIN:BAD_CHAIN;
-  return {...chain[cell.lvlIdx], good:cell.good, lvlIdx:cell.lvlIdx, chain:cell.chain};
-}
-function tryMerge(r1,c1,r2,c2){
-  let a=board[r1][c1], b=board[r2][c2];
-  if(!a||!b) return false;
-  if(a.good!==b.good) return false;
-  if(a.good && a.lvlIdx===b.lvlIdx && a.lvlIdx<GOOD_CHAIN.length-1){
-    let nextIdx=a.lvlIdx+1;
-    board[r1][c1]=null; board[r2][c2]=null;
-    let newCell={good:true, lvlIdx:nextIdx, chain:'good'};
-    let empty=emptyCells(); if(!empty.length){board[r2][c2]=newCell;}
-    else { let spot=empty[Math.floor(Math.random()*empty.length)]; board[spot.r][spot.c]=newCell; }
-    score+=10*(nextIdx+1); $msg.textContent='+'+(10*(nextIdx+1))+' очков!';
-    if(newCell.lvlIdx===GOOD_CHAIN.length-1){ won=true; $msg.textContent='🏆 КЕЙС! Ты монополист!'; }
-    $score.textContent=score; render(); spawnRandom(); render(); return true;
-  }
-  if(!a.good && a.lvlIdx===b.lvlIdx && a.lvlIdx<BAD_CHAIN.length-1){
-    let nextIdx=a.lvlIdx+1;
-    board[r1][c1]=null; board[r2][c2]=null;
-    let newCell={good:false, lvlIdx:nextIdx, chain:'bad'};
-    let empty=emptyCells(); if(!empty.length){board[r2][c2]=newCell;}
-    else { let spot=empty[Math.floor(Math.random()*empty.length)]; board[spot.r][spot.c]=newCell; }
-    score+=20*(nextIdx+1); $msg.textContent='Вредный слит! +'+(20*(nextIdx+1));
-    $score.textContent=score; render(); spawnRandom(); render(); return true;
-  }
-  if(a.good && !b.good && b.lvlIdx>=BAD_CHAIN.length-1){
-    board[r1][c1]=null; board[r2][c2]=null; score+=50*(b.lvlIdx+1);
-    $msg.textContent='🔥 Вредный предмет уничтожен!';
-    $score.textContent=score; render(); spawnRandom(); render(); return true;
-  }
-  if(!a.good && b.good && a.lvlIdx>=BAD_CHAIN.length-1){
-    board[r1][c1]=null; board[r2][c2]=null; score+=50*(a.lvlIdx+1);
-    $msg.textContent='🔥 Вредный предмет уничтожен!';
-    $score.textContent=score; render(); spawnRandom(); render(); return true;
-  }
-  return false;
-}
+    // Конфигурация уровней (твоя прогрессия + спец объекты)
+    const levels = [
+        { val: 1, name: "1₽", class: "lvl-1" },
+        { val: 2, name: "2₽", class: "lvl-2" },
+        { val: 5, name: "5₽", class: "lvl-3" },
+        { val: 10, name: "10₽", class: "lvl-4" },
+        { val: 100, name: "100₽", class: "lvl-5" },
+        { val: 500, name: "500₽", class: "lvl-6" },
+        { val: 1000, name: "1000₽", class: "lvl-7" },
+        { val: 10000, name: "10к₽", class: "lvl-8" },
+        { val: 0, name: "Чемодан", class: "lvl-9" }, // Чемодан не дает денег, но это следующий этап
+        { val: 0, name: "Банк", class: "lvl-10" },
+        { val: 999999, name: "Президент", class: "lvl-11" }
+    ];
 
-let dragItem=null, dragR=-1, dragC=-1, ghost=null;
+    const negativeObjects = [
+        { name: "Вор", class: "thief", effect: "steal" },
+        { name: "Долг", class: "debt", effect: "lose_money" }
+    ];
 
-function onDown(e){
-  if(won) return;
-  let cell=e.target.closest('.cell'); if(!cell) return;
-  let r=+cell.dataset.row, c=+cell.dataset.col;
-  if(!board[r][c]) return;
-  dragItem=board[r][c]; dragR=r; dragC=c;
-  let it=getItem(r,c);
-  ghost=document.createElement('div'); ghost.className='drag-ghost '+(it.good?'good':'bad');
-  ghost.textContent=it.emoji; document.body.appendChild(ghost);
-  cell.querySelector('.item').classList.add('dragging');
-  let x=e.touches?e.touches[0].clientX:e.clientX;
-  let y=e.touches?e.touches[0].clientY:e.clientY;
-  ghost.style.left=x+'px'; ghost.style.top=y+'px';
-}
+    const neutralObjects = [
+        { name: "Копилка", class: "safe", effect: "protect" },
+        { name: "Пусто", class: "empty", effect: "none" }
+    ];
 
-function onMove(e){
-  if(!ghost) return;
-  e.preventDefault();
-  let x=e.touches?e.touches[0].clientX:e.clientX;
-  let y=e.touches?e.touches[0].clientY:e.clientY;
-  ghost.style.left=x+'px'; ghost.style.top=y+'px';
-}
+    function initGame() {
+        const gridEl = document.getElementById('game-grid');
+        gridEl.innerHTML = '';
+        grid = [];
+        score = 0;
+        updateScore();
 
-function onUp(e){
-  if(!ghost) return;
-  document.querySelectorAll('.item.dragging').forEach(el=>el.classList.remove('dragging'));
-  ghost.remove(); ghost=null;
-  let x=e.changedTouches?e.changedTouches[0].clientX:e.clientX;
-  let y=e.changedTouches?e.changedTouches[0].clientY:e.clientY;
-  let target=document.elementFromPoint(x,y);
-  if(!target) { dragItem=null; return; }
-  let cell=target.closest('.cell');
-  if(!cell) { dragItem=null; return; }
-  let r=+cell.dataset.row, c=+cell.dataset.col;
-  if(r===dragR && c===dragC) { dragItem=null; return; }
-  if(tryMerge(dragR,dragC,r,c)) { dragItem=null; return; }
-  if(!board[r][c]){
-    board[r][c]=board[dragR][dragC];
-    board[dragR][dragC]=null;
-    render(); spawnRandom(); render();
-  }
-  dragItem=null;
-}
+        // Заполняем поле случайными объектами (смешиваем деньги, негатив и нейтрал)
+        for (let i = 0; i < gridSize * gridSize; i++) {
+            let type = Math.random();
+            let cellData = {};
 
-$board.addEventListener('touchstart',onDown,{passive:true});
-$board.addEventListener('touchmove',onMove,{passive:false});
-$board.addEventListener('touchend',onUp);
-$board.addEventListener('touchcancel',onUp);
-$board.addEventListener('mousedown',onDown);
-document.addEventListener('mousemove',onMove);
-document.addEventListener('mouseup',onUp);
-
-function render(){
-  $board.innerHTML='';
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      let cell=document.createElement('div'); cell.className='cell';
-      cell.dataset.row=r; cell.dataset.col=c;
-      let item=board[r][c];
-      if(item){
-        let it=getItem(r,c);
-        let el=document.createElement('div');
-        el.className='item '+(it.good?'good':'bad')+(won&&it.good&&it.lvlIdx===GOOD_CHAIN.length-1?' goal':'');
-        el.innerHTML=it.emoji+'<small style="font-size:0.5em">'+it.label+'</small>';
-        cell.appendChild(el);
-      }
-      $board.appendChild(cell);
+            if (type < 0.6) {
+                // 60% шанс на деньги (низкие уровни чаще)
+                let lvlIndex = Math.floor(Math.random() * 4); // Начинаем с 1, 2, 5, 10
+                cellData = { ...levels[lvlIndex], level: lvlIndex };
+            } else if (type < 0.8) {
+                // 20% шанс на негатив
+                const neg = negativeObjects[Math.floor(Math.random() * negativeObjects.length)];
+                cellData = { name: neg.name, class: neg.class, effect: neg.effect, level: -1 };
+            } else {
+                // 20% шанс на нейтрал
+                const neu = neutralObjects[Math.floor(Math.random() * neutralObjects.length)];
+                cellData = { name: neu.name, class: neu.class, effect: neu.effect, level: -2 };
+            }
+            
+            grid.push(cellData);
+            renderCell(i, cellData);
+        }
     }
-  }
-}
 
-function restart(){ initBoard(); }
-initBoard();
+    function renderCell(index, data) {
+        const gridEl = document.getElementById('game-grid');
+        const div = document.createElement('div');
+        div.className = `cell ${data.class}`;
+        div.innerText = data.name;
+        div.onclick = () => handleClick(index);
+        gridEl.appendChild(div);
+    }
+
+    function updateScore() {
+        scoreEl.innerText = score;
+    }
+
+    function handleClick(index) {
+        if (selectedCell === null) {
+            // Первый клик
+            selectedCell = index;
+            document.querySelectorAll('.cell')[index].style.border = "3px solid yellow";
+        } else {
+            // Второй клик (попытка слияния)
+            const cellA = grid[selectedCell];
+            const cellB = grid[index];
+            
+            // Проверка: клетки должны быть соседями
+            if (!areNeighbors(selectedCell, index)) {
+                alert("Клетки должны быть рядом!");
+                resetSelection();
+                return;
+            }
+
+            // Логика слияния
+            performMerge(selectedCell, index, cellA, cellB);
+            resetSelection();
+        }
+    }
+
+    function areNeighbors(idx1, idx2) {
+        const r1 = Math.floor(idx1 / gridSize);
+        const c1 = idx1 % gridSize;
+        const r2 = Math.floor(idx2 / gridSize);
+        const c2 = idx2 % gridSize;
+        return Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1;
+    }
+
+    function performMerge(idxA, idxB, cellA, cellB) {
+        const cells = document.querySelectorAll('.cell');
+        
+        // Сценарий 1: Слияние двух одинаковых денег
+        if (cellA.level >= 0 && cellB.level >= 0 && cellA.level === cellB.level) {
+            const nextLevel = cellA.level + 1;
+            if (nextLevel < levels.length) {
+                const newCell = { ...levels[nextLevel], level: nextLevel };
+                grid[idxA] = newCell; // Ставим новый объект на место первого
+                grid[idxB] = { name: "Пусто", class: "empty", effect: "none", level: -2 }; // Вторую делаем пустой
+                
+                cells[idxA].className = `cell ${newCell.class}`;
+                cells[idxA].innerText = newCell.name;
+                
+                cells[idxB].className = `cell empty`;
+                cells[idxB].innerText = "Пусто";
+
+                // Добавляем деньги только если это не чемодан/банк/президент
+                if (nextLevel <= 7) { 
+                    score += levels[nextLevel].val;
+                    updateScore();
+                }
+            } else {
+                alert("Максимальный уровень достигнут!");
+            }
+        } 
+        // Сценарий 2: Вор + Деньги = Вор побеждает (деньги исчезают)
+        else if ((cellA.effect === "steal" && cellB.level >= 0) || (cellB.effect === "steal" && cellA.level >= 0)) {
+            alert("Вор украл деньги!");
+            const moneyCell = (cellA.effect === "steal") ? idxB : idxA;
+            const thiefCell = (cellA.effect === "steal") ? idxA : idxB;
+            
+            grid[moneyCell] = { name: "Пусто", class: "empty", level: -2 };
+            cells[moneyCell].className = "cell empty";
+            cells[moneyCell].innerText = "Пусто";
+            
+            // Вор остается
+        }
+        // Сценарий 3: Долг + Деньги = Долг растет (или деньги сгорают)
+        else if ((cellA.effect === "lose_money" && cellB.level >= 0) || (cellB.effect === "lose_money" && cellA.level >= 0)) {
+            alert("Вы потеряли деньги из-за долга!");
+            const moneyVal = (cellA.effect === "lose_money") ? cellB.val : cellA.val;
+            score -= moneyVal;
+            updateScore();
+            
+            const moneyCell = (cellA.effect === "lose_money") ? idxB : idxA;
+            grid[moneyCell] = { name: "Пусто", class: "empty", level: -2 };
+            cells[moneyCell].className = "cell empty";
+            cells[moneyCell].innerText = "Пусто";
+        }
+        // Сценарий 4: Копилка + Деньги = Защита (Копилка становится сильнее или деньги сохраняются)
+        else if ((cellA.effect === "protect" && cellB.level >= 0) || (cellB.effect === "protect" && cellA.level >= 0)) {
+            alert("Копилка сохранила деньги!");
+            // Просто убираем копилку, деньги остаются (или копилка превращается в сейф)
+            const safeCell = (cellA.effect === "protect") ? idxA : idxB;
+            grid[safeCell] = { name: "Сейф", class: "safe", level: -2, effect: "super_protect" };
+            cells[safeCell].innerText = "Сейф";
+        }
+        else {
+            alert("Эти объекты нельзя соединить!");
+        }
+    }
+
+    function resetSelection() {
+        selectedCell = null;
+        document.querySelectorAll('.cell').forEach(c => c.style.border = "none");
+    }
+
+    function restartGame() {
+        initGame();
+    }
+
+    initGame();
 </script>
 </body>
 </html>
