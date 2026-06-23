@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Мажор 2048</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0a0a0a;
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; font-family: 'Segoe UI', sans-serif;
+  color: #f0e6d2;
+  overflow-x: hidden;
+}
+#app {
+  width: 100%; max-width: 420px;
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+/* Header */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.header h1 {
+  font-size: 1.4rem; background: linear-gradient(180deg, #f0d78c 0%, #b8860b 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  font-weight: 900; letter-spacing: 1px;
+}
+.scores { display: flex; gap: 8px; }
+.score-box {
+  background: #1a1a2e; border: 1px solid #b8860b; border-radius: 8px;
+  padding: 6px 14px; text-align: center;
+}
+.score-box .label { font-size: 0.7rem; color: #b8860b; text-transform: uppercase; }
+.score-box .value { font-size: 1.2rem; font-weight: 700; color: #f0d78c; }
+/* Timer */
+.timer {
+  font-size: 0.9rem; color: #b8860b; text-align: right;
+  font-weight: 600;
+}
+/* Board */
+#board-container {
+  background: #111122; border: 2px solid #b8860b; border-radius: 12px;
+  padding: 6px; overflow: hidden; position: relative;
+  aspect-ratio: 1; width: 100%;
+}
+#board {
+  display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);
+  gap: 4px; width: 100%; height: 100%; position: relative;
+}
+.cell {
+  background: #1a1a2e; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.9rem; color: #f0e6d2;
+  position: relative; overflow: hidden;
+}
+.tile {
+  position: absolute; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.9rem;
+  transition: left 0.12s ease, top 0.12s ease;
+  z-index: 10; pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.tile.pop { animation: popIn 0.15s ease; }
+.tile.merge { animation: mergePop 0.18s ease; }
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes mergePop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+/* Controls */
+.controls {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+}
+.controls button {
+  background: #1a1a2e; border: 1px solid #b8860b; color: #f0d78c;
+  padding: 8px 16px; border-radius: 8px; font-weight: 700;
+  cursor: pointer; font-size: 0.85rem;
+}
+.controls button:active { background: #2a2a4e; }
+/* Nickname screen */
+#nick-screen {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.95); z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px;
+}
+#nick-screen h2 { color: #f0d78c; font-size: 1.5rem; }
+#nick-input {
+  background: #1a1a2e; border: 2px solid #b8860b; color: #f0e6d2;
+  padding: 12px 18px; border-radius: 10px; font-size: 1.2rem; text-align: center;
+  width: 260px; outline: none;
+}
+#nick-start {
+  background: linear-gradient(180deg, #f0d78c, #b8860b);
+  color: #0a0a0a; border: none; padding: 12px 32px; border-radius: 10px;
+  font-weight: 900; font-size: 1.1rem; cursor: pointer;
+  opacity: 0.5; transition: opacity 0.2s;
+}
+#nick-start.active { opacity: 1; }
+/* Leaderboard */
+#lb-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.9); z-index: 90;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px;
+}
+#lb-overlay.show { display: flex; }
+#lb-overlay h2 { color: #f0d78c; }
+#lb-list {
+  list-style: none; color: #f0e6d2; font-size: 1rem;
+  max-height: 60vh; overflow-y: auto; width: 280px;
+}
+#lb-list li {
+  padding: 6px 10px; border-bottom: 1px solid #2a2a4e;
+}
+#lb-close {
+  background: #b8860b; color: #0a0a0a; border: none;
+  padding: 8px 24px; border-radius: 8px; font-weight: 700; cursor: pointer;
+}
+/* Music btn */
+#music-btn {
+  position: absolute; top: 8px; right: 8px; z-index: 20;
+  background: #1a1a2e; border: 1px solid #b8860b; color: #f0d78c;
+  width: 32px; height: 32px; border-radius: 50%; font-size: 1rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>МАЖОР 2048</h1>
+    <div class="scores">
+      <div class="score-box"><div class="label">Очки</div><div class="value" id="score">0</div></div>
+      <div class="score-box"><div class="label">Рекорд</div><div class="value" id="best-score">0</div></div>
+    </div>
+  </div>
+  <div class="timer" id="timer">00:00</div>
+  <div id="board-container">
+    <button id="music-btn">♪</button>
+    <div id="board"></div>
+  </div>
+  <div class="controls">
+    <button id="btn-lb">🏆 ТОП</button>
+    <button id="btn-restart">🔄 Заново</button>
+  </div>
+</div>
+
+<!-- Nickname screen -->
+<div id="nick-screen">
+  <h2>ВВЕДИ НИК</h2>
+  <input id="nick-input" type="text" maxlength="16" placeholder="Твой ник..." autofocus>
+  <button id="nick-start" disabled>ИГРАТЬ</button>
+</div>
+
+<!-- Leaderboard overlay -->
+<div id="lb-overlay">
+  <h2>🏆 ТОП-10</h2>
+  <ul id="lb-list"></ul>
+  <button id="lb-close">ЗАКРЫТЬ</button>
+</div>
+
+<script>
+// ========== AUDIO ==========
+let audioCtx = null;
+let musicOn = false;
+let musicInterval = null;
+let musicNoteIdx = 0;
+const NOTES = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playNote(freq, dur = 0.12) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+function startMusic() {
+  if (!audioCtx) initAudio();
+  musicOn = true;
+  document.getElementById('music-btn').textContent = '♪';
+  musicInterval = setInterval(() => {
+    playNote(NOTES[musicNoteIdx % NOTES.length], 0.15);
+    musicNoteIdx++;
+  }, 280);
+}
+function stopMusic() {
+  musicOn = false;
+  document.getElementById('music-btn').textContent = '♫';
+  if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+}
+document.getElementById('music-btn').addEventListener('click', () => {
+  initAudio();
+  if (musicOn) stopMusic(); else startMusic();
+});
+
+// ========== GAME STATE ==========
+const SIZE = 5;
+let grid = [];        // grid[row][col] = value (0 = empty)
+let score = 0;
+let bestScore = 0;
+let nickname = '';
+let gameOver = false;
+let timerSec = 0;
+let timerInterval = null;
+let lastSpawnLevel = 10; // минимальный номинал для спавна
+
+// Preload best score
+try {
+  bestScore = parseInt(localStorage.getItem('m2048_best') || '0');
+} catch(e) { bestScore = 0; }
+document.getElementById('best-score').textContent = bestScore;
+
+// ========== TILE RENDERING ==========
+const boardEl = document.getElementById('board');
+const boardContainer = document.getElementById('board-container');
+
+// Remove all tiles from DOM
+function clearTiles() {
+  boardEl.querySelectorAll('.tile').forEach(t => t.remove());
+}
+
+// Banknote names
+function banknoteName(v) {
+  const map = {
+    10: '10₽', 50: '50₽', 100: '100₽', 500: '500₽',
+    1000: '1000₽', 5000: '5000₽', 10000: '10 000₽',
+    50000: '50 000₽', 100000: '100 000₽', 500000: '500 000₽',
+    1000000: '1 000 000₽', 5000000: '5 000 000₽',
+    10000000: '10 000 000₽', 50000000: '50 000 000₽',
+    100000000: '100 000 000₽', 1000000000: '1 000 000 000₽'
+  };
+  return map[v] || (v + '₽');
+}
+
+// Tile color
+function tileColor(v) {
+  const colors = {
+    10: '#2a2a4e', 50: '#3a3a5e', 100: '#4a4a6e', 500: '#5a4a3e',
+    1000: '#6a5a2e', 5000: '#7a6a1e', 10000: '#8a7a0e',
+    50000: '#9a8a00', 100000: '#aa9a00', 500000: '#baaa00',
+    1000000: '#caba00', 5000000: '#daca00', 10000000: '#eada00',
+    50000000: '#faea00', 100000000: '#ffd700', 1000000000: '#ffed4a'
+  };
+  return colors[v] || '#ffd700';
+}
+
+function renderAll() {
+  clearTiles();
+  const rect = boardEl.getBoundingClientRect();
+  const cellW = rect.width / SIZE;
+  const cellH = rect.height / SIZE;
+  const gap = 4;
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (grid[r][c] === 0) continue;
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.textContent = banknoteName(grid[r][c]);
+      tile.style.background = tileColor(grid[r][c]);
+      tile.style.width = (cellW - gap) + 'px';
+      tile.style.height = (cellH - gap) + 'px';
+      tile.style.left = (c * cellW + gap/2) + 'px';
+      tile.style.top = (r * cellH + gap/2) + 'px';
+      tile.style.fontSize = (cellW * 0.18) + 'px';
+      tile.dataset.row = r;
+      tile.dataset.col = c;
+      tile.dataset.value = grid[r][c];
+      boardEl.appendChild(tile);
+    }
+  }
+}
+
+// Animate new tile
+function animateNew(r, c) {
+  const tile = boardEl.querySelector(`.tile[data-row="${r}"][data-col="${c}"]`);
+  if (tile) { tile.classList.add('pop'); setTimeout(() => tile.classList.remove('pop'), 150); }
+}
+
+function animateMerge(r, c) {
+  const tile = boardEl.querySelector(`.tile[data-row="${r}"][data-col="${c}"]`);
+  if (tile) { tile.classList.add('merge'); setTimeout(() => tile.classList.remove('merge'), 180); }
+}
+
+// ========== GAME LOGIC ==========
+function emptyGrid() {
+  grid = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+}
+
+function getEmptyCells() {
+  const empty = [];
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (grid[r][c] === 0) empty.push({r, c});
+  return empty;
+}
+
+function spawnTile() {
+  const empty = getEmptyCells();
+  if (empty.length === 0) return false;
+  const {r, c} = empty[Math.floor(Math.random() * empty.length)];
+  // Dynamic spawn: occasionally spawn higher values based on max tile
+  let maxTile = 10;
+  for (let rr = 0; rr < SIZE; rr++)
+    for (let cc = 0; cc < SIZE; cc++)
+      if (grid[rr][cc] > maxTile) maxTile = grid[rr][cc];
+  const roll = Math.random();
+  let val = 10;
+  if (maxTile >= 1000000) {
+    if (roll < 0.05) val = 50000;
+    else if (roll < 0.15) val = 10000;
+    else if (roll < 0.35) val = 1000;
+    else if (roll < 0.60) val = 500;
+    else if (roll < 0.85) val = 100;
+    else val = 50;
+  } else if (maxTile >= 100000) {
+    if (roll < 0.04) val = 10000;
+    else if (roll < 0.12) val = 5000;
+    else if (roll < 0.30) val = 1000;
+    else if (roll < 0.55) val = 500;
+    else if (roll < 0.80) val = 100;
+    else val = 50;
+  } else if (maxTile >= 10000) {
+    if (roll < 0.03) val = 5000;
+    else if (roll < 0.12) val = 1000;
+    else if (roll < 0.30) val = 500;
+    else if (roll < 0.55) val = 100;
+    else if (roll < 0.80) val = 50;
+    else val = 10;
+  } else if (maxTile >= 1000) {
+    if (roll < 0.05) val = 500;
+    else if (roll < 0.20) val = 100;
+    else if (roll < 0.55) val = 50;
+    else val = 10;
+  } else if (maxTile >= 500) {
+    if (roll < 0.08) val = 100;
+    else if (roll < 0.30) val = 50;
+    else val = 10;
+  } else {
+    if (roll < 0.15) val = 50;
+    else val = 10;
+  }
+  grid[r][c] = val;
+  lastSpawnLevel = val;
+  return true;
+}
+
+// Merge a single row (left direction)
+function mergeRow(row) {
+  // Remove zeros
+  let arr = row.filter(v => v !== 0);
+  let merged = [];
+  let i = 0;
+  while (i < arr.length) {
+    if (i + 1 < arr.length && arr[i] === arr[i+1]) {
+      merged.push(arr[i] * 2);
+      score += arr[i] * 2;
+      i += 2;
+    } else {
+      merged.push(arr[i]);
+      i++;
+    }
+  }
+  // Pad with zeros
+  while (merged.length < SIZE) merged.push(0);
+  return merged;
+}
+
+// Move direction: 'left','right','up','down'
+// Returns true if anything changed
+function move(direction) {
+  const oldGrid = grid.map(row => [...row]);
+  let newGrid = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+  
+  if (direction === 'left') {
+    for (let r = 0; r < SIZE; r++) {
+      newGrid[r] = mergeRow(oldGrid[r]);
+    }
+  } else if (direction === 'right') {
+    for (let r = 0; r < SIZE; r++) {
+      let reversed = mergeRow([...oldGrid[r]].reverse());
+      newGrid[r] = reversed.reverse();
+    }
+  } else if (direction === 'up') {
+    for (let c = 0; c < SIZE; c++) {
+      let col = oldGrid.map(row => row[c]);
+      let merged = mergeRow(col);
+      for (let r = 0; r < SIZE; r++) newGrid[r][c] = merged[r];
+    }
+  } else if (direction === 'down') {
+    for (let c = 0; c < SIZE; c++) {
+      let col = oldGrid.map(row => row[c]).reverse();
+      let merged = mergeRow(col);
+      let rev = merged.reverse();
+      for (let r = 0; r < SIZE; r++) newGrid[r][c] = rev[r];
+    }
+  }
+  
+  // Check if changed
+  let changed = false;
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (newGrid[r][c] !== oldGrid[r][c]) changed = true;
+  
+  if (!changed) return false;
+  
+  // Find where merges happened (value doubled, not just moved)
+  const mergeSpots = [];
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (newGrid[r][c] !== 0 && oldGrid[r][c] !== 0 && newGrid[r][c] > oldGrid[r][c]) {
+        mergeSpots.push({r, c});
+      }
+    }
+  }
+  
+  grid = newGrid;
+  spawnTile();
+  renderAll();
+  
+  // Animate merges
+  mergeSpots.forEach(({r,c}) => animateMerge(r, c));
+  // Animate new spawn
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (grid[r][c] !== 0 && oldGrid[r][c] === 0) {
+        animateNew(r, c);
+      }
+    }
+  }
+  
+  updateScore();
+  checkGameOver();
+  return true;
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = score;
+  if (score > bestScore) {
+    bestScore = score;
+    document.getElementById('best-score').textContent = bestScore;
+    try { localStorage.setItem('m2048_best', bestScore); } catch(e) {}
+    saveToLeaderboard();
+  }
+}
+
+function canMove() {
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (grid[r][c] === 0) return true;
+      if (c + 1 < SIZE && grid[r][c] === grid[r][c+1]) return true;
+      if (r + 1 < SIZE && grid[r][c] === grid[r+1][c]) return true;
+    }
+  }
+  return false;
+}
+
+function checkGameOver() {
+  if (!canMove()) {
+    gameOver = true;
+    stopTimer();
+    stopMusic();
+    alert('Игра окончена! Твой счёт: ' + score + '₽');
+  }
+}
+
+// ========== TIMER ==========
+function updateTimer() {
+  const m = Math.floor(timerSec / 60);
+  const s = timerSec % 60;
+  document.getElementById('timer').textContent = 
+    String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+function startTimer() {
+  timerSec = 0;
+  updateTimer();
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timerSec++;
+    updateTimer();
+  }, 1000);
+}
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+// ========== LEADERBOARD ==========
+function loadLeaderboard() {
+  try {
+    return JSON.parse(localStorage.getItem('m2048_lb') || '[]');
+  } catch(e) { return []; }
+}
+function saveToLeaderboard() {
+  if (!nickname) return;
+  let lb = loadLeaderboard();
+  // Remove old entry for this nick
+  lb = lb.filter(e => e.nick !== nickname);
+  lb.push({ nick: nickname, score: score, time: timerSec, date: new Date().toISOString() });
+  lb.sort((a,b) => b.score - a.score || a.time - b.time);
+  lb = lb.slice(0, 10);
+  try { localStorage.setItem('m2048_lb', JSON.stringify(lb)); } catch(e) {}
+}
+function showLeaderboard() {
+  const lb = loadLeaderboard();
+  const list = document.getElementById('lb-list');
+  list.innerHTML = '';
+  if (lb.length === 0) {
+    list.innerHTML = '<li style="color:#888">Пока пусто</li>';
+  } else {
+    lb.forEach((e, i) => {
+      const m = Math.floor(e.time / 60);
+      const s = e.time % 60;
+      const timeStr = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+      const li = document.createElement('li');
+      li.textContent = `${i+1}. ${e.nick} — ${e.score}₽ (${timeStr})`;
+      list.appendChild(li);
+    });
+  }
+  document.getElementById('lb-overlay').classList.add('show');
+}
+
+// ========== INIT ==========
+function newGame() {
+  emptyGrid();
+  score = 0;
+  gameOver = false;
+  lastSpawnLevel = 10;
+  document.getElementById('score').textContent = '0';
+  spawnTile();
+  spawnTile();
+  renderAll();
+  startTimer();
+  // Start music if not on
+  if (!musicOn && audioCtx) startMusic();
+}
+
+// ========== SWIPE ==========
+let touchStartX = 0, touchStartY = 0;
+boardContainer.addEventListener('touchstart', (e) => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, {passive: true});
+boardContainer.addEventListener('touchend', (e) => {
+  if (gameOver) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  const absDx = Math.abs(dx), absDy = Math.abs(dy);
+  if (absDx < 30 && absDy < 30) return;
+  if (absDx > absDy) {
+    move(dx > 0 ? 'right' : 'left');
+  } else {
+    move(dy > 0 ? 'down' : 'up');
+  }
+});
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  if (gameOver) return;
+  const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+  if (map[e.key]) {
+    e.preventDefault();
+    move(map[e.key]);
+  }
+});
+
+// ========== BUTTONS ==========
+document.getElementById('btn-restart').addEventListener('click', () => {
+  stopTimer();
+  newGame();
+});
+document.getElementById('btn-lb').addEventListener('click', showLeaderboard);
+document.getElementById('lb-close').addEventListener('click', () => {
+  document.getElementById('lb-overlay').classList.remove('show');
+});
+
+// ========== NICK SCREEN ==========
+const nickScreen = document.getElementById('nick-screen');
+const nickInput = document.getElementById('nick-input');
+const nickStart = document.getElementById('nick-start');
+
+nickInput.addEventListener('input', () => {
+  if (nickInput.value.trim().length >= 2) {
+    nickStart.disabled = false;
+    nickStart.classList.add('active');
+  } else {
+    nickStart.disabled = true;
+    nickStart.classList.remove('active');
+  }
+});
+nickStart.addEventListener('click', () => {
+  const n = nickInput.value.trim();
+  if (n.length < 2) return;
+  nickname = n;
+  nickScreen.style.display = 'none';
+  initAudio();
+  newGame();
+});
+// Enter key
+nickInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && nickname === '') {
+    nickStart.click();
+  }
+});
+</script>
+</body>
+</html>
