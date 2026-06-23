@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Мажор 2048</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', sans-serif;
+    color: #d4af37;
+    overflow-x: hidden;
+  }
+  #nickScreen, #gameScreen { width: 100%; max-width: 400px; text-align: center; padding: 10px; }
+  h1 { font-size: 28px; margin-bottom: 8px; letter-spacing: 2px; text-transform: uppercase; background: linear-gradient(180deg, #ffd700, #b8860b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  #nickInput { width: 80%; padding: 12px; font-size: 18px; border: 2px solid #b8860b; background: #1a1a1a; color: #ffd700; border-radius: 8px; text-align: center; margin: 15px 0; }
+  #playBtn { padding: 12px 40px; font-size: 20px; background: linear-gradient(180deg, #ffd700, #b8860b); border: none; border-radius: 8px; color: #0a0a0a; font-weight: bold; cursor: pointer; opacity: 0.4; transition: 0.2s; }
+  #playBtn.active { opacity: 1; }
+  #playBtn.active:active { transform: scale(0.95); }
+  .score { font-size: 16px; margin: 6px 0; color: #ffd700; }
+  .board {
+    width: 340px; height: 340px;
+    margin: 10px auto;
+    background: #1a1a1a;
+    border: 3px solid #b8860b;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 4px;
+    padding: 4px;
+    touch-action: none;
+  }
+  .cell {
+    background: #111;
+    border-radius: 6px;
+    position: relative;
+  }
+  .tile {
+    position: absolute;
+    border-radius: 8px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: left 0.12s ease, top 0.12s ease;
+    z-index: 1;
+  }
+  .tile.pop { animation: popIn 0.15s ease-out; }
+  .tile.merge { animation: mergePop 0.2s ease-out; }
+  @keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  @keyframes mergePop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+  .tile[data-value="10"] { background: linear-gradient(135deg, #2c2c2c, #3a3a3a); color: #ccc; font-size: 18px; }
+  .tile[data-value="50"] { background: linear-gradient(135deg, #3d2b1f, #5a3d2b); color: #c49a6c; font-size: 18px; }
+  .tile[data-value="100"] { background: linear-gradient(135deg, #1f3d1f, #2e5a2e); color: #8fbc8f; font-size: 17px; }
+  .tile[data-value="500"] { background: linear-gradient(135deg, #1f2b3d, #2b3d5a); color: #87ceeb; font-size: 18px; }
+  .tile[data-value="1000"] { background: linear-gradient(135deg, #3d1f2b, #5a2b3d); color: #ff69b4; font-size: 16px; }
+  .tile[data-value="5000"] { background: linear-gradient(135deg, #3d3d1f, #5a5a2b); color: #ffd700; font-size: 16px; }
+  .tile[data-value="10000"] { background: linear-gradient(135deg, #2b1f3d, #3d2b5a); color: #da70d6; font-size: 15px; }
+  .tile[data-value="50000"] { background: linear-gradient(135deg, #b8860b, #ffd700); color: #0a0a0a; font-size: 15px; }
+  .tile[data-value="100000"] { background: linear-gradient(135deg, #ffd700, #ffec8b); color: #0a0a0a; font-size: 14px; }
+  .tile[data-value="500000"] { background: linear-gradient(135deg, #ff6b6b, #ff4444); color: #fff; font-size: 13px; }
+  .tile[data-value="1000000"] { background: linear-gradient(135deg, #ffd700, #ff6600); color: #fff; font-size: 12px; text-shadow: 0 0 6px #ffd700; }
+  .tile[data-value="5000000"] { background: linear-gradient(135deg, #00ff88, #00cc66); color: #0a0a0a; font-size: 12px; }
+  .tile[data-value="10000000"] { background: linear-gradient(135deg, #ff00ff, #cc00cc); color: #fff; font-size: 11px; text-shadow: 0 0 8px #ff00ff; }
+  .tile[data-value="50000000"] { background: linear-gradient(135deg, #00ffff, #0099ff); color: #0a0a0a; font-size: 10px; }
+  .tile[data-value="100000000"] { background: linear-gradient(135deg, #ffd700, #ff6600, #ff0000); color: #fff; font-size: 10px; text-shadow: 0 0 10px #ffd700; animation: pulseGold 1s infinite; }
+  @keyframes pulseGold {
+    0% { box-shadow: 0 0 8px #ffd700; }
+    50% { box-shadow: 0 0 20px #ffd700, 0 0 30px #ff6600; }
+    100% { box-shadow: 0 0 8px #ffd700; }
+  }
+  #leaderboard { width: 100%; max-width: 400px; margin: 10px auto; display: none; }
+  #leaderboard table { width: 100%; border-collapse: collapse; }
+  #leaderboard th, #leaderboard td { padding: 6px; border: 1px solid #b8860b; font-size: 14px; }
+  #leaderboard th { background: #1a1a1a; color: #ffd700; }
+  #leaderboard td { background: #111; color: #ccc; }
+  .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+  .btn { padding: 10px 20px; background: #1a1a1a; border: 2px solid #b8860b; color: #ffd700; border-radius: 8px; font-size: 16px; cursor: pointer; }
+  .btn:active { background: #b8860b; color: #0a0a0a; }
+  .timer { font-size: 22px; color: #ffd700; margin: 5px 0; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<div id="nickScreen">
+  <h1>Мажор 2048</h1>
+  <input type="text" id="nickInput" placeholder="Твой ник" maxlength="20" autocomplete="off">
+  <button id="playBtn" disabled>Играть</button>
+</div>
+
+<div id="gameScreen" style="display:none;">
+  <h1>Мажор 2048</h1>
+  <div class="score">💰 Очки: <span id="scoreVal">0</span></div>
+  <div class="timer">⏱ <span id="timerVal">00:00</span></div>
+  <div class="board" id="board"></div>
+  <div class="btn-row">
+    <button class="btn" id="lbBtn">🏆 ТОП</button>
+    <button class="btn" id="soundBtn">♪</button>
+    <button class="btn" id="quitBtn">Выйти</button>
+  </div>
+  <div id="leaderboard"><table><thead><tr><th>#</th><th>Ник</th><th>Очки</th><th>Время</th></tr></thead><tbody id="lbBody"></tbody></table></div>
+</div>
+
+<script>
+(function(){
+  const DENOMS = [10,50,100,500,1000,5000,10000,50000,100000,500000,1000000,5000000,10000000,50000000,100000000];
+  const DENOM_LABELS = {10:'10₽',50:'50₽',100:'100₽',500:'500₽',1000:'1к',5000:'5к',10000:'10к',50000:'50к',100000:'100к',500000:'500к',1000000:'1М',5000000:'5М',10000000:'10М',50000000:'50М',100000000:'Магнат'};
+  const SIZE = 5;
+  const CELL_PX = 66.4; // (340 - 4*4 - 2*4) / 5 = 66.4
+  const GAP = 4;
+  const PAD = 4;
+  
+  let nick = '';
+  let board = [];
+  let score = 0;
+  let gameOver = false;
+  let timerSec = 0, timerInt;
+  let soundOn = true, audioCtx = null;
+  let dragging = false, dragStartX, dragStartY;
+  
+  // DOM
+  const nickScreen = document.getElementById('nickScreen');
+  const gameScreen = document.getElementById('gameScreen');
+  const nickInput = document.getElementById('nickInput');
+  const playBtn = document.getElementById('playBtn');
+  const boardEl = document.getElementById('board');
+  const scoreVal = document.getElementById('scoreVal');
+  const timerVal = document.getElementById('timerVal');
+  const lbDiv = document.getElementById('leaderboard');
+  const lbBody = document.getElementById('lbBody');
+  
+  nickInput.addEventListener('input', ()=>{
+    if(nickInput.value.trim().length>=2) { playBtn.disabled=false; playBtn.classList.add('active'); }
+    else { playBtn.disabled=true; playBtn.classList.remove('active'); }
+  });
+  
+  playBtn.addEventListener('click', ()=>{
+    nick = nickInput.value.trim();
+    if(nick.length<2) return;
+    startGame();
+  });
+  
+  document.getElementById('quitBtn').addEventListener('click', quitGame);
+  document.getElementById('soundBtn').addEventListener('click', toggleSound);
+  document.getElementById('lbBtn').addEventListener('click', toggleLB);
+  
+  function startGame(){
+    board = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
+    score = 0; gameOver = false; timerSec = 0;
+    updateScore(); updateTimer();
+    timerInt = setInterval(()=>{ timerSec++; updateTimer(); }, 1000);
+    nickScreen.style.display='none';
+    gameScreen.style.display='block';
+    lbDiv.style.display='none';
+    spawnTile(); spawnTile();
+    render();
+  }
+  
+  function quitGame(){
+    clearInterval(timerInt);
+    if(score>0) saveToLeaderboard();
+    gameScreen.style.display='none';
+    nickScreen.style.display='block';
+    nickInput.value=''; playBtn.disabled=true; playBtn.classList.remove('active');
+  }
+  
+  function gameIsOver(){
+    clearInterval(timerInt);
+    gameOver = true;
+    if(score>0) saveToLeaderboard();
+    setTimeout(()=>alert('Игра окончена! Твой счёт: '+score+'₽'), 100);
+  }
+  
+  function spawnTile(){
+    let empties = [];
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++) if(board[r][c]===0) empties.push([r,c]);
+    if(empties.length===0) return;
+    let [r,c] = empties[Math.floor(Math.random()*empties.length)];
+    // динамический спавн
+    let maxTile = 0;
+    for(let rr=0;rr<SIZE;rr++) for(let cc=0;cc<SIZE;cc++) if(board[rr][cc]>maxTile) maxTile=board[rr][cc];
+    let idx = DENOMS.indexOf(maxTile);
+    if(idx<0) idx=0;
+    // 70% шанс спавна базовой десятки, 20% полтоса, 10% сотки (но не выше чем maxTile+2 уровня)
+    let rnd = Math.random();
+    let val;
+    if(rnd<0.7 || idx<1) val = 10;
+    else if(rnd<0.9 || idx<2) val = 50;
+    else val = 100;
+    // но не выше, чем maxTile (чтобы не спавнилась сотка когда у игрока только десятки)
+    if(val > maxTile && maxTile>0) val = DENOMS[Math.min(idx, DENOMS.indexOf(maxTile))];
+    board[r][c] = val;
+  }
+  
+  function move(dir){
+    if(gameOver) return false;
+    let moved = false;
+    let newBoard = board.map(r=>[...r]);
+    // clear board
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++) board[r][c]=0;
+    
+    // dir: 0=вправо, 1=влево, 2=вниз, 3=вверх
+    // Для каждого ряда/колонки собираем плитки, сливаем, записываем обратно
+    
+    if(dir===0){ // вправо
+      for(let r=0;r<SIZE;r++){
+        let row = [];
+        for(let c=SIZE-1;c>=0;c--) if(newBoard[r][c]!==0) row.push(newBoard[r][c]);
+        row = mergeRow(row);
+        for(let c=SIZE-1,i=0;c>=0 && i<row.length;c--,i++) board[r][c]=row[i];
+        for(let c=SIZE-1-row.length;c>=0;c--) board[r][c]=0;
+        // check moved
+        for(let c=0;c<SIZE;c++) if(board[r][c]!==newBoard[r][c]) moved=true;
+      }
+    } else if(dir===1){ // влево
+      for(let r=0;r<SIZE;r++){
+        let row = [];
+        for(let c=0;c<SIZE;c++) if(newBoard[r][c]!==0) row.push(newBoard[r][c]);
+        row = mergeRow(row);
+        for(let c=0;c<row.length;c++) board[r][c]=row[c];
+        for(let c=row.length;c<SIZE;c++) board[r][c]=0;
+        for(let c=0;c<SIZE;c++) if(board[r][c]!==newBoard[r][c]) moved=true;
+      }
+    } else if(dir===2){ // вниз
+      for(let c=0;c<SIZE;c++){
+        let col = [];
+        for(let r=SIZE-1;r>=0;r--) if(newBoard[r][c]!==0) col.push(newBoard[r][c]);
+        col = mergeRow(col);
+        for(let r=SIZE-1,i=0;r>=0 && i<col.length;r--,i++) board[r][c]=col[i];
+        for(let r=SIZE-1-col.length;r>=0;r--) board[r][c]=0;
+        for(let r=0;r<SIZE;r++) if(board[r][c]!==newBoard[r][c]) moved=true;
+      }
+    } else if(dir===3){ // вверх
+      for(let c=0;c<SIZE;c++){
+        let col = [];
+        for(let r=0;r<SIZE;r++) if(newBoard[r][c]!==0) col.push(newBoard[r][c]);
+        col = mergeRow(col);
+        for(let r=0;r<col.length;r++) board[r][c]=col[r];
+        for(let r=col.length;r<SIZE;r++) board[r][c]=0;
+        for(let r=0;r<SIZE;r++) if(board[r][c]!==newBoard[r][c]) moved=true;
+      }
+    }
+    return moved;
+  }
+  
+  function mergeRow(arr){
+    if(arr.length===0) return [];
+    let res = [];
+    let i=0;
+    while(i<arr.length){
+      if(i+1<arr.length && arr[i]===arr[i+1]){
+        let merged = arr[i]*2;
+        res.push(merged);
+        score += merged;
+        updateScore();
+        i+=2;
+      } else {
+        res.push(arr[i]);
+        i++;
+      }
+    }
+    return res;
+  }
+  
+  function canMove(){
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        if(board[r][c]===0) return true;
+        if(c<SIZE-1 && board[r][c]===board[r][c+1]) return true;
+        if(r<SIZE-1 && board[r][c]===board[r+1][c]) return true;
+      }
+    }
+    return false;
+  }
+  
+  function updateScore(){ scoreVal.textContent = score; }
+  function updateTimer(){
+    let m = Math.floor(timerSec/60), s = timerSec%60;
+    timerVal.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+  
+  function render(){
+    boardEl.innerHTML = '';
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        let cell = document.createElement('div');
+        cell.className='cell';
+        cell.style.gridRow=r+1; cell.style.gridColumn=c+1;
+        boardEl.appendChild(cell);
+      }
+    }
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        if(board[r][c]===0) continue;
+        let tile = document.createElement('div');
+        tile.className='tile';
+        tile.setAttribute('data-value', board[r][c]);
+        tile.textContent = DENOM_LABELS[board[r][c]] || board[r][c]+'₽';
+        tile.style.width = (CELL_PX-6)+'px';
+        tile.style.height = (CELL_PX-6)+'px';
+        tile.style.lineHeight = (CELL_PX-6)+'px';
+        tile.style.left = (PAD + c*(CELL_PX+GAP) + 3)+'px';
+        tile.style.top = (PAD + r*(CELL_PX+GAP) + 3)+'px';
+        boardEl.appendChild(tile);
+      }
+    }
+  }
+  
+  // === touch / keyboard ===
+  let touchStartX=0, touchStartY=0;
+  boardEl.addEventListener('touchstart', e=>{
+    if(gameOver) return;
+    e.preventDefault();
+    let t = e.touches[0];
+    touchStartX = t.clientX; touchStartY = t.clientY;
+  }, {passive:false});
+  boardEl.addEventListener('touchend', e=>{
+    if(gameOver) return;
+    let t = e.changedTouches[0];
+    let dx = t.clientX - touchStartX;
+    let dy = t.clientY - touchStartY;
+    let absDx = Math.abs(dx), absDy = Math.abs(dy);
+    if(Math.max(absDx,absDy)<20) return;
+    let dir;
+    if(absDx>absDy) dir = dx>0 ? 0 : 1; // право/лево
+    else dir = dy>0 ? 2 : 3; // вниз/вверх
+    playSwipe(dir);
+  });
+  document.addEventListener('keydown', e=>{
+    if(gameOver || gameScreen.style.display==='none') return;
+    let dir;
+    if(e.key==='ArrowRight') dir=0;
+    else if(e.key==='ArrowLeft') dir=1;
+    else if(e.key==='ArrowDown') dir=2;
+    else if(e.key==='ArrowUp') dir=3;
+    else return;
+    e.preventDefault();
+    playSwipe(dir);
+  });
+  
+  function playSwipe(dir){
+    let moved = move(dir);
+    if(moved){
+      spawnTile();
+      render();
+      // анимируем pop для новых плиток
+      let tiles = boardEl.querySelectorAll('.tile');
+      tiles.forEach(t=>{ t.classList.add('pop'); setTimeout(()=>t.classList.remove('pop'), 150); });
+      if(!canMove()) gameIsOver();
+    }
+  }
+  
+  // === звук ===
+  function initAudio(){
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  }
+  function playBeep(freq){
+    if(!soundOn) return;
+    initAudio();
+    let osc = audioCtx.createOscillator();
+    let gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.value = 0.06;
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.1);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime+0.1);
+  }
+  function toggleSound(){ soundOn=!soundOn; document.getElementById('soundBtn').textContent = soundOn?'♪':'♪'; }
+  
+  // === лидерборд ===
+  function saveToLeaderboard(){
+    let lb = JSON.parse(localStorage.getItem('mazhor2048_lb')||'[]');
+    lb.push({nick,score,time:timerSec});
+    lb.sort((a,b)=>b.score-a.score || a.time-b.time);
+    lb = lb.slice(0,10);
+    localStorage.setItem('mazhor2048_lb', JSON.stringify(lb));
+  }
+  function toggleLB(){
+    if(lbDiv.style.display==='block'){ lbDiv.style.display='none'; return; }
+    let lb = JSON.parse(localStorage.getItem('mazhor2048_lb')||'[]');
+    lbBody.innerHTML = '';
+    lb.forEach((e,i)=>{
+      let tr = document.createElement('tr');
+      let mm = Math.floor(e.time/60), ss = e.time%60;
+      tr.innerHTML = `<td>${i+1}</td><td>${e.nick}</td><td>${e.score}₽</td><td>${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}</td>`;
+      lbBody.appendChild(tr);
+    });
+    lbDiv.style.display='block';
+  }
+  
+  // Touch start на доске (для разблокировки аудио)
+  boardEl.addEventListener('touchstart', ()=>{ initAudio(); }, {once:true});
+  document.addEventListener('click', ()=>{ initAudio(); }, {once:true});
+})();
+</script>
+</body>
+</html>
