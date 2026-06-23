@@ -1,569 +1,772 @@
-# Денежное Слияние 2048
-
-## index.html
-
-```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Денежное Слияние 2048</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            padding: 10px;
+            height: 100vh;
+            overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
-            overflow: hidden;
         }
-        .header {
+
+        .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 100%;
-            max-width: 400px;
-            margin-bottom: 8px;
+            width: min(95vw, 500px);
+            margin-bottom: 12px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
+
         h1 {
-            font-size: 1.4em;
+            font-size: clamp(1.2em, 4vw, 1.8em);
             color: #f1c40f;
+            text-shadow: 0 0 20px rgba(241, 196, 15, 0.3);
             letter-spacing: 1px;
         }
+
         .score-box {
-            background: #16213e;
-            border-radius: 8px;
-            padding: 6px 14px;
-            text-align: center;
-        }
-        .score-label {
-            font-size: 0.65em;
-            color: #aaa;
-            text-transform: uppercase;
-        }
-        .score-value {
-            font-size: 1.4em;
-            font-weight: 900;
-            color: #fff;
-        }
-        .best-box {
-            background: #16213e;
-            border-radius: 8px;
-            padding: 6px 14px;
-            text-align: center;
-        }
-        .best-label {
-            font-size: 0.65em;
-            color: #aaa;
-            text-transform: uppercase;
-        }
-        .best-value {
-            font-size: 1.4em;
-            font-weight: 900;
-            color: #f1c40f;
-        }
-        .game-container {
-            background: #16213e;
+            background: rgba(255,255,255,0.08);
+            padding: 8px 16px;
             border-radius: 12px;
-            padding: 8px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            position: relative;
-            touch-action: none;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.12);
         }
-        .grid-bg {
+
+        .score-box .label { color: #aaa; font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px; }
+        .score-box .value { color: #f1c40f; font-size: 1.3em; }
+
+        .timer-box {
+            background: rgba(255,255,255,0.08);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.12);
+            font-variant-numeric: tabular-nums;
+            font-family: 'Courier New', monospace;
+            min-width: 100px;
+            justify-content: center;
+        }
+
+        .timer-box .label { color: #aaa; font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px; }
+
+        .game-container {
+            position: relative;
+            width: min(95vw, 500px);
+            aspect-ratio: 1;
+        }
+
+        .grid-background {
+            position: absolute;
+            inset: 0;
             display: grid;
             grid-template-columns: repeat(6, 1fr);
             grid-template-rows: repeat(6, 1fr);
             gap: 6px;
+            padding: 6px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
         }
-        .cell-bg {
-            aspect-ratio: 1;
-            background: #0f3460;
-            border-radius: 6px;
-            min-width: 52px;
-            min-height: 52px;
+
+        .bg-cell {
+            background: rgba(255,255,255,0.04);
+            border-radius: 8px;
         }
+
         .tiles-layer {
             position: absolute;
-            top: 8px; left: 8px; right: 8px; bottom: 8px;
+            inset: 6px;
             pointer-events: none;
         }
+
         .tile {
             position: absolute;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 900;
-            border-radius: 6px;
-            transition: transform 0.12s ease, left 0.12s ease, top 0.12s ease;
-            z-index: 1;
-            line-height: 1.1;
+            font-weight: bold;
+            transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+            will-change: transform;
             text-align: center;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            line-height: 1.1;
+            font-size: clamp(0.55em, 2.2vw, 0.9em);
+            word-break: break-word;
+            hyphens: auto;
+            overflow: hidden;
+            padding: 2px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+            animation: tile-appear 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
+
+        @keyframes tile-appear {
+            0% { transform: scale(0) translate(0,0); opacity: 0; }
+            100% { transform: scale(1) translate(0,0); opacity: 1; }
+        }
+
+        @keyframes tile-merge {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+
         .tile.merged {
-            z-index: 2;
-            transform: scale(1.15);
-            transition: transform 0.1s ease;
+            animation: tile-merge 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
         }
-        .tile.new {
-            animation: pop-in 0.18s ease;
+
+        /* Цвета тайлов */
+        .t-1  { background: #2ecc71; color: #1a3a1a; }
+        .t-2  { background: #27ae60; color: white; }
+        .t-3  { background: #1abc9c; color: white; }
+        .t-4  { background: #16a085; color: white; }
+        .t-5  { background: #f1c40f; color: #3d2e00; }
+        .t-6  { background: #f39c12; color: white; }
+        .t-7  { background: #e67e22; color: white; }
+        .t-8  { background: #d35400; color: white; }
+        .t-9  { background: #e74c3c; color: white; }
+        .t-10 { background: #c0392b; color: white; }
+        .t-11 { background: #8e6b3e; color: #ffe0a8; }
+        .t-12 { background: #d4af37; color: #3d2e00; text-shadow: 0 0 8px rgba(255,215,0,0.5); }
+        .t-13 { background: linear-gradient(135deg, #d4af37, #ffd700); color: #3d2e00; font-weight: 900; }
+        .t-14 { background: linear-gradient(135deg, #c0c0c0, #e8e8e8); color: #1a1a1a; font-weight: 900; border: 2px solid #ffd700; }
+        .t-15 { background: #1a1a1a; color: #c0c0c0; border: 2px solid #c0c0c0; font-weight: 900; }
+        .t-16 { background: linear-gradient(135deg, #2c3e50, #34495e); color: #f1c40f; border: 3px solid #f1c40f; font-weight: 900; text-shadow: 0 0 10px rgba(241,196,15,0.4); }
+        .t-17 { background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b); color: #1a0000; font-weight: 900; font-size: 1.1em; text-shadow: 0 0 15px rgba(255,215,0,0.8); border: 3px solid #fff; animation: pulse-magnate 2s ease-in-out infinite; }
+
+        @keyframes pulse-magnate {
+            0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.6); }
+            50% { box-shadow: 0 0 40px rgba(255,215,0,1); }
         }
-        @keyframes pop-in {
-            0% { transform: scale(0); opacity: 0; }
-            70% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
-        .msg-overlay {
+
+        button {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: #f1c40f;
+            color: #f1c40f;
+        }
+
+        button.music-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3em;
+            background: rgba(241,196,15,0.15);
+            border-color: rgba(241,196,15,0.3);
+        }
+
+        button.music-btn.muted {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.1);
+            opacity: 0.5;
+        }
+
+        .overlay {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            inset: 0;
             background: rgba(0,0,0,0.7);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 100;
-            flex-direction: column;
-            gap: 16px;
+            backdrop-filter: blur(4px);
+            animation: fade-in 0.3s;
         }
-        .msg-overlay.hidden { display: none; }
-        .msg-text {
-            font-size: 1.6em;
-            font-weight: 900;
-            color: #f1c40f;
+
+        @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .overlay-box {
+            background: #1a1a2e;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 30px 40px;
             text-align: center;
-            text-shadow: 0 0 20px rgba(241,196,15,0.5);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
-        .msg-sub {
-            font-size: 1em;
-            color: #ccc;
+
+        .overlay-box h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
         }
-        button {
-            padding: 14px 36px;
+
+        .overlay-box.win h2 { color: #f1c40f; }
+        .overlay-box.lose h2 { color: #e74c3c; }
+
+        .overlay-box button {
+            margin-top: 16px;
+            padding: 14px 30px;
             font-size: 1.1em;
-            background: #f1c40f;
-            color: #1a1a2e;
-            border: none;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: 900;
-            letter-spacing: 1px;
-            transition: background 0.2s;
-        }
-        button:active { background: #d4a80b; }
-        .btn-small {
-            padding: 10px 24px;
-            font-size: 0.9em;
-            margin-top: 4px;
-        }
-        .controls {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
         }
 
-        /* Цвета объектов */
-        .t-1  { background: #2ecc71; color: #0a3d1f; font-size: 1.2em; }
-        .t-2  { background: #27ae60; color: #fff; font-size: 1.2em; }
-        .t-5  { background: #f9e74a; color: #5c4a00; font-size: 1.2em; }
-        .t-10 { background: #f39c12; color: #fff; font-size: 1.2em; }
-        .t-100 { background: #e67e22; color: #fff; font-size: 1.1em; }
-        .t-500 { background: #d35400; color: #fff; font-size: 1.1em; }
-        .t-1000 { background: #c0392b; color: #fff; font-size: 1em; }
-        .t-2000 { background: #8e1a2b; color: #fff; font-size: 1em; }
-        .t-5000 { background: #7d3c98; color: #fff; font-size: 1em; }
-        .t-10000 { background: #4a235a; color: #f1c40f; font-size: 0.95em; border: 2px solid #f1c40f; }
-
-        .t-bcase { background: #6b4226; color: #f5deb3; font-size: 0.75em; border: 2px solid #8b5a2b; }
-        .t-gcase { background: linear-gradient(135deg, #b8860b, #ffd700, #daa520); color: #3e2700; font-size: 0.75em; font-weight: 900; border: 2px solid #ffd700; text-shadow: 0 0 4px rgba(255,215,0,0.5); }
-        .t-gbar  { background: linear-gradient(135deg, #ffd700, #ffaa00, #ffd700); color: #3e2700; font-size: 0.7em; font-weight: 900; border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,215,0,0.6); }
-        .t-gbars { background: linear-gradient(135deg, #ffd700, #f1c40f, #ffaa00, #ffd700); color: #2c1a00; font-size: 0.65em; font-weight: 900; border: 2px solid #fff; box-shadow: 0 0 14px rgba(255,215,0,0.8); }
-        .t-merc  { background: #111; color: #ccc; font-size: 0.7em; border: 2px solid #555; text-shadow: 0 0 6px rgba(255,255,255,0.3); }
-        .t-bank  { background: linear-gradient(180deg, #1a237e, #283593, #1a237e); color: #ffd700; font-size: 0.85em; border: 2px solid #ffd700; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 6px rgba(255,215,0,0.4); }
-        .t-magn  { background: linear-gradient(135deg, #e74c3c, #f1c40f, #2ecc71, #3498db, #9b59b6); color: #fff; font-size: 0.85em; font-weight: 900; border: 3px solid #fff; box-shadow: 0 0 20px rgba(255,255,255,0.5); animation: magn-glow 1.5s ease-in-out infinite alternate; text-shadow: 0 0 8px rgba(0,0,0,0.5); }
-        @keyframes magn-glow {
-            0% { box-shadow: 0 0 12px rgba(241,196,15,0.6); }
-            100% { box-shadow: 0 0 24px rgba(255,255,255,0.9); }
+        .touch-hint {
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75em;
+            color: rgba(255,255,255,0.35);
+            pointer-events: none;
+            white-space: nowrap;
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div style="display:flex;gap:8px;">
-            <div class="score-box">
-                <div class="score-label">Счёт</div>
-                <div class="score-value" id="score">0</div>
-            </div>
-            <div class="best-box">
-                <div class="best-label">Рекорд</div>
-                <div class="best-value" id="best">0</div>
-            </div>
+    <div class="top-bar">
+        <h1>Денежное Слияние</h1>
+        <div class="timer-box">
+            <span class="label">Время</span>
+            <span id="timer">00:00</span>
         </div>
-        <button class="btn-small" onclick="Game.restart()">Заново</button>
+        <div class="score-box">
+            <span class="label">Баланс</span>
+            <span class="value" id="score">0</span>
+            <span style="color:#aaa; font-size:0.8em;">₽</span>
+        </div>
     </div>
 
     <div class="game-container" id="gameContainer">
-        <div class="grid-bg" id="gridBg"></div>
+        <div class="grid-background" id="gridBackground"></div>
         <div class="tiles-layer" id="tilesLayer"></div>
     </div>
 
-    <div class="controls">
-        <span style="color:#aaa;font-size:0.75em;">←↑↓→ свайпами или стрелками</span>
+    <div class="btn-row">
+        <button onclick="Game.restart()">Начать заново</button>
+        <button class="music-btn" id="musicBtn" onclick="Game.toggleMusic()">♪</button>
     </div>
 
-    <!-- Оверлей победы -->
-    <div class="msg-overlay hidden" id="winOverlay">
-        <div class="msg-text">🏆 МАГНАТ!</div>
-        <div class="msg-sub">Ты собрал империю. Счёт: <span id="winScore">0</span></div>
-        <button onclick="Game.restart()">Играть ещё</button>
-    </div>
-
-    <!-- Оверлей поражения -->
-    <div class="msg-overlay hidden" id="loseOverlay">
-        <div class="msg-text">😵 Ходов нет</div>
-        <div class="msg-sub">Поле забито. Счёт: <span id="loseScore">0</span></div>
-        <button onclick="Game.restart()">Попробовать снова</button>
-    </div>
+    <div id="overlayContainer"></div>
 
 <script>
-(function() {
+const Game = (() => {
     const SIZE = 6;
-    const GAP = 6;
-    const PAD = 8;
-
-    // Иерархия: уровень → {название, css-класс, очки за слияние}
-    const LEVELS = [
-        { id: 0,  name: '1₽',        cls: 't-1',     pts: 1,     spawn: true,  weight: 40 },
-        { id: 1,  name: '2₽',        cls: 't-2',     pts: 2,     spawn: true,  weight: 30 },
-        { id: 2,  name: '5₽',        cls: 't-5',     pts: 5,     spawn: true,  weight: 18 },
-        { id: 3,  name: '10₽',       cls: 't-10',    pts: 10,    spawn: true,  weight: 10 },
-        { id: 4,  name: '100₽',      cls: 't-100',   pts: 100,   spawn: true,  weight: 2 },
-        { id: 5,  name: '500₽',      cls: 't-500',   pts: 500,   spawn: false, weight: 0 },
-        { id: 6,  name: '1 000₽',    cls: 't-1000',  pts: 1000,  spawn: false, weight: 0 },
-        { id: 7,  name: '2 000₽',    cls: 't-2000',  pts: 2000,  spawn: false, weight: 0 },
-        { id: 8,  name: '5 000₽',    cls: 't-5000',  pts: 5000,  spawn: false, weight: 0 },
-        { id: 9,  name: '10 000₽',   cls: 't-10000', pts: 10000, spawn: false, weight: 0 },
-        { id: 10, name: 'Чемодан',   cls: 't-bcase', pts: 15000, spawn: false, weight: 0 },
-        { id: 11, name: 'Зол. чемодан', cls: 't-gcase', pts: 25000, spawn: false, weight: 0 },
-        { id: 12, name: 'Слиток',    cls: 't-gbar',  pts: 50000, spawn: false, weight: 0 },
-        { id: 13, name: 'Слитки',    cls: 't-gbars', pts: 100000, spawn: false, weight: 0 },
-        { id: 14, name: 'Мерседес',  cls: 't-merc',  pts: 250000, spawn: false, weight: 0 },
-        { id: 15, name: 'Банк',      cls: 't-bank',  pts: 500000, spawn: false, weight: 0 },
-        { id: 16, name: 'Магнат',    cls: 't-magn',  pts: 1000000, spawn: false, weight: 0 }
-    ];
-    const MAX_LEVEL = LEVELS.length - 1; // 16 = Магнат
-    const WIN_LEVEL = MAX_LEVEL;
-
-    let grid = [];       // grid[row][col] = level id или null
+    let grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
     let score = 0;
-    let best = 0;
     let won = false;
     let gameOver = false;
-    let tileSize = 0;
+    let movedThisTurn = false;
+    let seconds = 0;
+    let timerInterval = null;
+    let musicEnabled = false;
+    let audioCtx = null;
+    let musicInterval = null;
+    let tileIdCounter = 0;
+    let previousPositions = new Map(); // tileId -> {r,c}
+
+    // Иерархия: индекс = уровень (0 — пусто, 1 — 1₽, ..., 17 — Магнат)
+    const NAMES = [
+        '', '1 ₽', '2 ₽', '5 ₽', '10 ₽', '100 ₽', '500 ₽', '1000 ₽',
+        '2000 ₽', '5000 ₽', '10 000 ₽', 'Чемодан', 'Золотой чемодан',
+        'Слиток', 'Слитки', 'Мерседес', 'Банк', 'Магнат'
+    ];
+
+    const MAX_LEVEL = 17;
 
     const scoreEl = document.getElementById('score');
-    const bestEl = document.getElementById('best');
-    const gridBg = document.getElementById('gridBg');
+    const timerEl = document.getElementById('timer');
     const tilesLayer = document.getElementById('tilesLayer');
-    const gameContainer = document.getElementById('gameContainer');
-    const winOverlay = document.getElementById('winOverlay');
-    const loseOverlay = document.getElementById('loseOverlay');
+    const overlayContainer = document.getElementById('overlayContainer');
+    const musicBtn = document.getElementById('musicBtn');
 
-    // Локальное хранилище рекорда
-    try { best = parseInt(localStorage.getItem('merge2048_best')) || 0; } catch(e) {}
-    bestEl.textContent = best;
-
-    function calcTileSize() {
-        const w = gameContainer.clientWidth;
-        tileSize = Math.floor((w - PAD * 2 - GAP * (SIZE + 1)) / SIZE);
+    // Строим фоновые ячейки
+    const gridBg = document.getElementById('gridBackground');
+    for (let i = 0; i < SIZE * SIZE; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'bg-cell';
+        gridBg.appendChild(cell);
     }
 
-    function buildBg() {
-        gridBg.innerHTML = '';
-        for (let i = 0; i < SIZE * SIZE; i++) {
-            const div = document.createElement('div');
-            div.className = 'cell-bg';
-            gridBg.appendChild(div);
-        }
+    function getTileSize() {
+        const container = document.getElementById('gameContainer');
+        const rect = container.getBoundingClientRect();
+        const totalSize = rect.width;
+        const innerSize = totalSize - 12; // padding 6px с каждой стороны
+        const gap = 6;
+        const cellSize = (innerSize - gap * (SIZE - 1)) / SIZE;
+        return { cellSize, gap, totalSize, innerSize };
     }
 
-    function tilePos(row, col) {
-        return {
-            left: PAD + col * (tileSize + GAP) + GAP,
-            top: PAD + row * (tileSize + GAP) + GAP
-        };
+    function tileTransform(r, c) {
+        const { cellSize, gap } = getTileSize();
+        const x = c * (cellSize + gap);
+        const y = r * (cellSize + gap);
+        return `translate(${x}px, ${y}px)`;
     }
 
+    // Каждый тайл — это div с data-id, data-level, data-r, data-c
+    // При ререндере мы обновляем transform И уровень
     function render() {
-        tilesLayer.innerHTML = '';
-        const frag = document.createDocumentFragment();
+        const { cellSize } = getTileSize();
+
+        // Собираем, что должно быть на поле
+        const currentTiles = [];
         for (let r = 0; r < SIZE; r++) {
             for (let c = 0; c < SIZE; c++) {
-                const lvl = grid[r][c];
-                if (lvl === null) continue;
-                const info = LEVELS[lvl];
-                const pos = tilePos(r, c);
-                const div = document.createElement('div');
-                div.className = 'tile ' + info.cls;
-                div.textContent = info.name;
-                div.style.left = pos.left + 'px';
-                div.style.top = pos.top + 'px';
-                div.style.width = tileSize + 'px';
-                div.style.height = tileSize + 'px';
-                div.style.fontSize = (tileSize * 0.22) + 'px';
-                div.dataset.row = r;
-                div.dataset.col = c;
-                div.dataset.lvl = lvl;
-                div.dataset.merged = '0';
-                div.dataset.isNew = '0';
-                frag.appendChild(div);
-            }
-        }
-        tilesLayer.appendChild(frag);
-    }
-
-    function renderTileAnimated(r, c, merged, isNew) {
-        const lvl = grid[r][c];
-        if (lvl === null) return;
-        const info = LEVELS[lvl];
-        const pos = tilePos(r, c);
-        const div = document.createElement('div');
-        div.className = 'tile ' + info.cls + (merged ? ' merged' : '') + (isNew ? ' new' : '');
-        div.textContent = info.name;
-        div.style.left = pos.left + 'px';
-        div.style.top = pos.top + 'px';
-        div.style.width = tileSize + 'px';
-        div.style.height = tileSize + 'px';
-        div.style.fontSize = (tileSize * 0.22) + 'px';
-        tilesLayer.appendChild(div);
-    }
-
-    function renderFull(mergeMap, newMap) {
-        tilesLayer.innerHTML = '';
-        const frag = document.createDocumentFragment();
-        for (let r = 0; r < SIZE; r++) {
-            for (let c = 0; c < SIZE; c++) {
-                const lvl = grid[r][c];
-                if (lvl === null) continue;
-                const info = LEVELS[lvl];
-                const pos = tilePos(r, c);
-                const merged = mergeMap && mergeMap[r] && mergeMap[r][c];
-                const isNew = newMap && newMap[r] && newMap[r][c];
-                const div = document.createElement('div');
-                div.className = 'tile ' + info.cls + (merged ? ' merged' : '') + (isNew ? ' new' : '');
-                div.textContent = info.name;
-                div.style.left = pos.left + 'px';
-                div.style.top = pos.top + 'px';
-                div.style.width = tileSize + 'px';
-                div.style.height = tileSize + 'px';
-                div.style.fontSize = (tileSize * 0.22) + 'px';
-                frag.appendChild(div);
-            }
-        }
-        tilesLayer.appendChild(frag);
-    }
-
-    function emptyCells() {
-        const cells = [];
-        for (let r = 0; r < SIZE; r++)
-            for (let c = 0; c < SIZE; c++)
-                if (grid[r][c] === null) cells.push({r, c});
-        return cells;
-    }
-
-    function spawnTile() {
-        const empty = emptyCells();
-        if (empty.length === 0) return false;
-        const pos = empty[Math.floor(Math.random() * empty.length)];
-
-        // Выбор уровня для спавна: только spawn:true, с весами
-        const spawnable = LEVELS.filter(l => l.spawn);
-        const totalWeight = spawnable.reduce((s, l) => s + l.weight, 0);
-        let roll = Math.random() * totalWeight;
-        let chosen = spawnable[0];
-        for (const l of spawnable) {
-            roll -= l.weight;
-            if (roll <= 0) { chosen = l; break; }
-        }
-        grid[pos.r][pos.c] = chosen.id;
-        return { r: pos.r, c: pos.c, lvl: chosen.id };
-    }
-
-    function initGrid() {
-        grid = Array.from({length: SIZE}, () => Array(SIZE).fill(null));
-        score = 0;
-        won = false;
-        gameOver = false;
-        winOverlay.classList.add('hidden');
-        loseOverlay.classList.add('hidden');
-        scoreEl.textContent = '0';
-        spawnTile();
-        spawnTile();
-        render();
-    }
-
-    function canMove() {
-        // Есть ли пустые клетки или соседние одинаковые
-        if (emptyCells().length > 0) return true;
-        for (let r = 0; r < SIZE; r++) {
-            for (let c = 0; c < SIZE; c++) {
-                if (c < SIZE - 1 && grid[r][c] === grid[r][c+1]) return true;
-                if (r < SIZE - 1 && grid[r][c] === grid[r+1][c]) return true;
-            }
-        }
-        return false;
-    }
-
-    function move(dir) {
-        // dir: 0=up, 1=right, 2=down, 3=left
-        if (gameOver || won) return false;
-
-        const vectors = [
-            {dr: -1, dc: 0},  // up
-            {dr: 0, dc: 1},   // right
-            {dr: 1, dc: 0},   // down
-            {dr: 0, dc: -1}   // left
-        ];
-        const v = vectors[dir];
-
-        // Порядок обхода: сдвигаем в направлении движения
-        const rows = [];
-        const cols = [];
-        if (v.dr === 1)  for (let r = SIZE-1; r >= 0; r--) rows.push(r); // down: снизу вверх
-        else             for (let r = 0; r < SIZE; r++) rows.push(r);
-        if (v.dc === 1)  for (let c = SIZE-1; c >= 0; c--) cols.push(c); // right: справа налево
-        else             for (let c = 0; c < SIZE; c++) cols.push(c);
-
-        const merged = Array.from({length: SIZE}, () => Array(SIZE).fill(false));
-        let moved = false;
-
-        for (const r of rows) {
-            for (const c of cols) {
-                if (grid[r][c] === null) continue;
-                let cr = r, cc = c;
-                // Двигаем пока можем
-                while (true) {
-                    const nr = cr + v.dr;
-                    const nc = cc + v.dc;
-                    if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break; // граница
-                    if (grid[nr][nc] === null) {
-                        // Пусто — двигаем
-                        grid[nr][nc] = grid[cr][cc];
-                        grid[cr][cc] = null;
-                        cr = nr; cc = nc;
-                        moved = true;
-                    } else if (grid[nr][nc] === grid[cr][cc] && !merged[nr][nc]) {
-                        // Слияние
-                        const oldLvl = grid[cr][cc];
-                        const newLvl = oldLvl + 1;
-                        grid[nr][nc] = newLvl;
-                        grid[cr][cc] = null;
-                        merged[nr][nc] = true;
-                        score += LEVELS[newLvl].pts;
-                        moved = true;
-                        if (newLvl >= WIN_LEVEL) won = true;
-                        break;
-                    } else {
-                        break; // упёрлись в другой тайл
-                    }
+                if (grid[r][c] !== 0) {
+                    currentTiles.push({ r, c, level: grid[r][c] });
                 }
             }
         }
 
-        if (moved) {
-            const newTile = spawnTile();
-            const newMap = Array.from({length: SIZE}, () => Array(SIZE).fill(false));
-            if (newTile) newMap[newTile.r][newTile.c] = true;
-            renderFull(merged, newMap);
-            scoreEl.textContent = score;
+        // Сопоставляем существующие DOM-элементы с текущими тайлами по координатам
+        const existingDivs = new Map(); // key "r,c" -> div
+        const allTileDivs = tilesLayer.querySelectorAll('.tile');
+        const usedKeys = new Set();
 
-            if (!canMove()) {
-                gameOver = true;
-                setTimeout(() => {
-                    document.getElementById('loseScore').textContent = score;
-                    loseOverlay.classList.remove('hidden');
-                }, 400);
+        for (const div of allTileDivs) {
+            const dr = parseInt(div.dataset.r);
+            const dc = parseInt(div.dataset.c);
+            const dLevel = parseInt(div.dataset.level);
+            const key = dr + ',' + dc;
+
+            // Проверяем, есть ли тайл с такими же координатами в текущем состоянии
+            const match = currentTiles.find(t => t.r === dr && t.c === dc && t.level === dLevel);
+            if (match && !usedKeys.has(key)) {
+                existingDivs.set(key, div);
+                usedKeys.add(key);
+            } else {
+                // Этот div больше не нужен или изменился уровень — убираем
+                div.style.transition = 'transform 0.1s, opacity 0.15s';
+                div.style.opacity = '0';
+                div.style.transform = tileTransform(dr, dc) + ' scale(0.5)';
+                setTimeout(() => div.remove(), 200);
             }
-            if (won && !gameOver) {
-                setTimeout(() => {
-                    document.getElementById('winScore').textContent = score;
-                    winOverlay.classList.remove('hidden');
-                }, 500);
+        }
+
+        // Для тайлов, у которых сменился уровень (был другой уровень на тех же координатах) — 
+        // создаём новые div'ы
+        const toCreate = [];
+        for (const tile of currentTiles) {
+            const key = tile.r + ',' + tile.c;
+            if (!existingDivs.has(key)) {
+                toCreate.push(tile);
             }
-            // Сохраняем рекорд
-            if (score > best) {
-                best = score;
-                bestEl.textContent = best;
-                try { localStorage.setItem('merge2048_best', best); } catch(e) {}
+        }
+
+        // Обновляем существующие (позиция могла измениться)
+        for (const [key, div] of existingDivs) {
+            const [r, c] = key.split(',').map(Number);
+            div.style.transform = tileTransform(r, c);
+            div.dataset.r = r;
+            div.dataset.c = c;
+            // Убираем merged после отрисовки
+            if (div.classList.contains('merged')) {
+                setTimeout(() => div.classList.remove('merged'), 250);
             }
-            return true;
+        }
+
+        // Создаём новые
+        for (const tile of toCreate) {
+            const div = document.createElement('div');
+            div.className = 'tile t-' + tile.level;
+            div.textContent = NAMES[tile.level];
+            div.dataset.r = tile.r;
+            div.dataset.c = tile.c;
+            div.dataset.level = tile.level;
+            div.style.width = cellSize + 'px';
+            div.style.height = cellSize + 'px';
+            div.style.transform = tileTransform(tile.r, tile.c);
+            tilesLayer.appendChild(div);
+        }
+
+        // Обновляем размеры всех тайлов (на случай ресайза)
+        const allDivs = tilesLayer.querySelectorAll('.tile');
+        for (const div of allDivs) {
+            if (!div.style.width || div.style.width === '') {
+                div.style.width = cellSize + 'px';
+                div.style.height = cellSize + 'px';
+            }
+        }
+
+        scoreEl.textContent = score;
+    }
+
+    function renderResize() {
+        const { cellSize } = getTileSize();
+        const allDivs = tilesLayer.querySelectorAll('.tile');
+        for (const div of allDivs) {
+            div.style.width = cellSize + 'px';
+            div.style.height = cellSize + 'px';
+            const r = parseInt(div.dataset.r);
+            const c = parseInt(div.dataset.c);
+            div.style.transform = tileTransform(r, c);
+        }
+    }
+
+    // Спавним новый тайл
+    function spawnTile() {
+        const empty = [];
+        for (let r = 0; r < SIZE; r++) {
+            for (let c = 0; c < SIZE; c++) {
+                if (grid[r][c] === 0) empty.push({ r, c });
+            }
+        }
+        if (empty.length === 0) return;
+
+        const pos = empty[Math.floor(Math.random() * empty.length)];
+        // Веса: чаще мелкие купюры
+        const weights = [
+            { level: 1, w: 35 },  // 1₽
+            { level: 2, w: 25 },  // 2₽
+            { level: 3, w: 15 },  // 5₽
+            { level: 4, w: 12 },  // 10₽
+            { level: 5, w: 8 },   // 100₽
+            { level: 6, w: 4 },   // 500₽
+            { level: 7, w: 1 },   // 1000₽ (редко)
+        ];
+        const total = weights.reduce((s, x) => s + x.w, 0);
+        let rnd = Math.random() * total;
+        let level = 1;
+        for (const w of weights) {
+            rnd -= w.w;
+            if (rnd <= 0) { level = w.level; break; }
+        }
+
+        grid[pos.r][pos.c] = level;
+    }
+
+    function startTimer() {
+        stopTimer();
+        seconds = 0;
+        updateTimerDisplay();
+        timerInterval = setInterval(() => {
+            seconds++;
+            updateTimerDisplay();
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+    }
+
+    function updateTimerDisplay() {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        timerEl.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    // Проверка, можно ли ходить
+    function canMove() {
+        for (let r = 0; r < SIZE; r++) {
+            for (let c = 0; c < SIZE; c++) {
+                if (grid[r][c] === 0) return true;
+                if (c < SIZE - 1 && grid[r][c] === grid[r][c + 1]) return true;
+                if (r < SIZE - 1 && grid[r][c] === grid[r + 1][c]) return true;
+            }
         }
         return false;
     }
 
-    // --- Управление ---
-    let touchStartX = 0, touchStartY = 0;
-
-    gameContainer.addEventListener('touchstart', e => {
-        if (e.touches.length === 1) {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
+    // Сдвиг и слияние строки влево
+    function slideRow(row) {
+        // Убираем нули
+        let filtered = row.filter(v => v !== 0);
+        let result = [];
+        let i = 0;
+        while (i < filtered.length) {
+            if (i + 1 < filtered.length && filtered[i] === filtered[i + 1] && filtered[i] < MAX_LEVEL) {
+                // Слияние
+                result.push(filtered[i] + 1);
+                score += (filtered[i] + 1) * 100;
+                movedThisTurn = true;
+                i += 2;
+            } else {
+                result.push(filtered[i]);
+                i += 1;
+            }
         }
-    }, {passive: false});
+        // Добиваем нулями
+        while (result.length < SIZE) result.push(0);
+        return result;
+    }
 
-    gameContainer.addEventListener('touchend', e => {
+    function moveLeft() {
+        movedThisTurn = false;
+        for (let r = 0; r < SIZE; r++) {
+            const oldRow = [...grid[r]];
+            const newRow = slideRow(oldRow);
+            if (oldRow.join(',') !== newRow.join(',')) movedThisTurn = true;
+            grid[r] = newRow;
+        }
+        return movedThisTurn;
+    }
+
+    function moveRight() {
+        movedThisTurn = false;
+        for (let r = 0; r < SIZE; r++) {
+            const oldRow = [...grid[r]];
+            const reversed = oldRow.slice().reverse();
+            const slid = slideRow(reversed);
+            const newRow = slid.reverse();
+            if (oldRow.join(',') !== newRow.join(',')) movedThisTurn = true;
+            grid[r] = newRow;
+        }
+        return movedThisTurn;
+    }
+
+    function moveUp() {
+        movedThisTurn = false;
+        for (let c = 0; c < SIZE; c++) {
+            const oldCol = [];
+            for (let r = 0; r < SIZE; r++) oldCol.push(grid[r][c]);
+            const newCol = slideRow(oldCol);
+            if (oldCol.join(',') !== newCol.join(',')) movedThisTurn = true;
+            for (let r = 0; r < SIZE; r++) grid[r][c] = newCol[r];
+        }
+        return movedThisTurn;
+    }
+
+    function moveDown() {
+        movedThisTurn = false;
+        for (let c = 0; c < SIZE; c++) {
+            const oldCol = [];
+            for (let r = 0; r < SIZE; r++) oldCol.push(grid[r][c]);
+            const reversed = oldCol.slice().reverse();
+            const slid = slideRow(reversed);
+            const newCol = slid.reverse();
+            if (oldCol.join(',') !== newCol.join(',')) movedThisTurn = true;
+            for (let r = 0; r < SIZE; r++) grid[r][c] = newCol[r];
+        }
+        return movedThisTurn;
+    }
+
+    function doMove(direction) {
         if (gameOver || won) return;
-        const dx = (e.changedTouches[0]?.clientX || touchStartX) - touchStartX;
-        const dy = (e.changedTouches[0]?.clientY || touchStartY) - touchStartY;
+
+        const moved = (() => {
+            switch (direction) {
+                case 'left': return moveLeft();
+                case 'right': return moveRight();
+                case 'up': return moveUp();
+                case 'down': return moveDown();
+                default: return false;
+            }
+        })();
+
+        if (moved) {
+            spawnTile();
+            render();
+
+            // Проверка на Магната
+            if (!won) {
+                for (let r = 0; r < SIZE; r++) {
+                    for (let c = 0; c < SIZE; c++) {
+                        if (grid[r][c] === MAX_LEVEL) {
+                            won = true;
+                            showOverlay('win');
+                            return;
+                        }
+                    }
+                }
+            }
+
+            if (!canMove()) {
+                gameOver = true;
+                setTimeout(() => showOverlay('lose'), 500);
+            }
+        }
+    }
+
+    function showOverlay(type) {
+        stopTimer();
+        const isWin = type === 'win';
+        overlayContainer.innerHTML = `
+            <div class="overlay" onclick="event.stopPropagation()">
+                <div class="overlay-box ${isWin ? 'win' : 'lose'}">
+                    <h2>${isWin ? '🏆 Магнат!' : '💸 Нет ходов'}</h2>
+                    <p style="color:#aaa; margin:8px 0;">
+                        ${isWin ? 'Ты собрал империю!' : 'Деньги кончились, кредит не дали.'}
+                    </p>
+                    <p style="font-size:1.2em; color:#f1c40f;">Баланс: ${score} ₽</p>
+                    <p style="color:#aaa; font-size:0.9em;">Время: ${timerEl.textContent}</p>
+                    <button onclick="Game.restart()">Начать заново</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function hideOverlay() {
+        overlayContainer.innerHTML = '';
+    }
+
+    // === МУЗЫКА ===
+    function startMusic() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 349.23, 329.63, 293.66]; // C D E F G F E D
+        let noteIndex = 0;
+        const bpm = 100;
+        const intervalMs = 60000 / bpm;
+
+        function playNote() {
+            if (!musicEnabled) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = notes[noteIndex % notes.length];
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.35);
+            noteIndex++;
+        }
+
+        playNote();
+        musicInterval = setInterval(playNote, intervalMs);
+        musicBtn.classList.remove('muted');
+    }
+
+    function stopMusic() {
+        if (musicInterval) {
+            clearInterval(musicInterval);
+            musicInterval = null;
+        }
+        musicBtn.classList.add('muted');
+    }
+
+    function toggleMusic() {
+        musicEnabled = !musicEnabled;
+        if (musicEnabled) {
+            startMusic();
+        } else {
+            stopMusic();
+        }
+    }
+
+    // === УПРАВЛЕНИЕ ===
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const SWIPE_THRESHOLD = 30;
+
+    document.addEventListener('touchstart', e => {
+        if (gameOver || won) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+        if (gameOver || won) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
         const absDx = Math.abs(dx);
         const absDy = Math.abs(dy);
-        if (Math.max(absDx, absDy) < 20) return; // слишком короткий свайп
+
+        if (Math.max(absDx, absDy) < SWIPE_THRESHOLD) return;
 
         if (absDx > absDy) {
-            move(dx > 0 ? 1 : 3); // right : left
+            doMove(dx > 0 ? 'right' : 'left');
         } else {
-            move(dy > 0 ? 2 : 0); // down : up
+            doMove(dy > 0 ? 'down' : 'up');
         }
     });
 
     document.addEventListener('keydown', e => {
-        const map = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 };
-        if (e.key in map) {
-            e.preventDefault();
-            move(map[e.key]);
+        if (gameOver || won) return;
+        switch (e.key) {
+            case 'ArrowLeft': e.preventDefault(); doMove('left'); break;
+            case 'ArrowRight': e.preventDefault(); doMove('right'); break;
+            case 'ArrowUp': e.preventDefault(); doMove('up'); break;
+            case 'ArrowDown': e.preventDefault(); doMove('down'); break;
         }
     });
 
-    // --- Публичный API ---
-    window.Game = {
-        restart() {
-            calcTileSize();
-            initGrid();
-        },
-        move
-    };
+    window.addEventListener('resize', renderResize);
+
+    // === ПУБЛИЧНЫЙ API ===
+    function restart() {
+        stopTimer();
+        stopMusic();
+        grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+        score = 0;
+        won = false;
+        gameOver = false;
+        seconds = 0;
+        hideOverlay();
+        tilesLayer.innerHTML = '';
+
+        // Стартовые 2 тайла
+        const empty = [];
+        for (let r = 0; r < SIZE; r++)
+            for (let c = 0; c < SIZE; c++)
+                empty.push({ r, c });
+        const shuffled = empty.sort(() => Math.random() - 0.5);
+        grid[shuffled[0].r][shuffled[0].c] = Math.random() < 0.6 ? 1 : 2;
+        grid[shuffled[1].r][shuffled[1].c] = Math.random() < 0.6 ? 1 : 2;
+
+        updateTimerDisplay();
+        render();
+        startTimer();
+
+        if (musicEnabled) {
+            startMusic();
+        }
+    }
 
     // Старт
-    buildBg();
-    calcTileSize();
-    initGrid();
+    restart();
 
-    window.addEventListener('resize', () => {
-        calcTileSize();
-        render();
-    });
+    return { restart, toggleMusic, doMove };
 })();
 </script>
+
 </body>
 </html>
