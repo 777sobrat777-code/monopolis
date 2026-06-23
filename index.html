@@ -1,313 +1,220 @@
-&lt;!DOCTYPE html&gt;
-&lt;html lang="ru"&gt;
-&lt;head&gt;
-&lt;meta charset="UTF-8"&gt;
-&lt;meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"&gt;
-&lt;title&gt;Монополист&lt;/title&gt;
-&lt;style&gt;
-  <i> { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    background:#1a1a2e; color:#eee; font-family:system-ui,sans-serif;
-    display:flex; flex-direction:column; align-items:center;
-    min-height:100vh; padding:12px;
-    user-select:none; -webkit-user-select:none;
-    touch-action:manipulation;
-  }
-  h1 { font-size:22px; margin-bottom:2px; letter-spacing:2px; }
-  .score { font-size:16px; color:#f0c040; margin-bottom:8px; }
-  .score span { font-weight:bold; font-size:20px; }
-  .board {
-    display:grid; grid-template-columns:repeat(5,1fr);
-    gap:6px; width:min(95vw,420px); aspect-ratio:5/4;
-    background:#16213e; padding:8px; border-radius:14px;
-  }
-  .cell {
-    background:#0f3460; border-radius:10px;
-    display:flex; align-items:center; justify-content:center;
-    font-size:32px; position:relative;
-    transition:transform .1s;
-  }
-  .cell .item {
-    width:90%; height:90%; border-radius:10px;
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    font-size:clamp(16px,3.5vw,26px);
-    cursor:grab; position:relative; z-index:1;
-  }
-  .cell .item:active { cursor:grabbing; }
-  .item.good { background:#1b5e20; box-shadow:0 0 8px #4caf50; }
-  .item.bad  { background:#5e1b1b; box-shadow:0 0 8px #f44336; }
-  .item.goal { background:#e6a800; box-shadow:0 0 16px #ffd600; animation:pulse .7s infinite alternate; }
-  @keyframes pulse { from{box-shadow:0 0 8px #ffd600;} to{box-shadow:0 0 20px #ffd600;} }
-  .item.dragging { opacity:0.5; }
-  .drag-ghost {
-    position:fixed; pointer-events:none; z-index:999;
-    width:clamp(50px,12vw,75px); height:clamp(50px,12vw,75px);
-    border-radius:12px; display:flex;
-    align-items:center; justify-content:center;
-    font-size:clamp(20px,4.5vw,34px);
-    opacity:0.9; transform:translate(-50%,-50%);
-  }
-  .drag-ghost.good { background:#2e7d32; box-shadow:0 0 12px #4caf50; }
-  .drag-ghost.bad  { background:#7d2020; box-shadow:0 0 12px #f44336; }
-  .controls { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
-  button {
-    background:#e94560; color:#fff; border:none;
-    padding:10px 20px; border-radius:8px; font-size:15px;
-    font-weight:bold; cursor:pointer;
-  }
-  button:active { transform:scale(.96); }
-  .msg { margin-top:8px; font-size:14px; color:#aaa; min-height:20px; }
-&lt;/style&gt;
-&lt;/head&gt;
-&lt;body&gt;
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Монополист</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#1a1a2e; color:#eee; font-family:system-ui,sans-serif; display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:12px; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+    h1 { font-size:22px; margin-bottom:2px; letter-spacing:2px; }
+    .score { font-size:16px; color:#f0c040; margin-bottom:8px; }
+    .score span { font-weight:bold; font-size:20px; }
+    .board { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; width:min(95vw,420px); aspect-ratio:4/5; background:#16213e; padding:8px; border-radius:14px; }
+    .cell { background:#0f3460; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:32px; position:relative; transition:transform .1s; }
+    .cell .item { width:90%; height:90%; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:clamp(16px,3.5vw,26px); cursor:grab; position:relative; z-index:1; }
+    .cell .item:active { cursor:grabbing; }
+    .item.good { background:#1b5e20; box-shadow:0 0 8px #4caf50; }
+    .item.bad { background:#5e1b1b; box-shadow:0 0 8px #f44336; }
+    .item.goal { background:#e6a800; box-shadow:0 0 16px #ffd600; animation:pulse .7s infinite alternate; }
+    @keyframes pulse { from{box-shadow:0 0 8px #ffd600;} to{box-shadow:0 0 20px #ffd600;} }
+    .item.dragging { opacity:0.5; }
+    .drag-ghost { position:fixed; pointer-events:none; z-index:999; width:clamp(50px,12vw,75px); height:clamp(50px,12vw,75px); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:clamp(20px,4.5vw,34px); opacity:0.9; transform:translate(-50%,-50%); }
+    .drag-ghost.good { background:#2e7d32; box-shadow:0 0 12px #4caf50; }
+    .drag-ghost.bad { background:#7d2020; box-shadow:0 0 12px #f44336; }
+    .controls { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+    button { background:#e94560; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; }
+    button:active { transform:scale(.96); }
+    .msg { margin-top:8px; font-size:14px; color:#aaa; min-height:20px; }
+  </style>
+</head>
+<body>
+  <h1>🏢 Монополист</h1>
+  <div class="score">Счёт: <span id="score">0</span></div>
+  <div class="board" id="board"></div>
+  <div class="controls">
+    <button onclick="restart()">🔄 Заново</button>
+  </div>
+  <div class="msg" id="msg"></div>
 
-&lt;h1&gt;🏢 Монополист&lt;/h1&gt;
-&lt;div class="score"&gt;Счёт: &lt;span id="score"&gt;0&lt;/span&gt;&lt;/div&gt;
-&lt;div class="board" id="board"&gt;&lt;/div&gt;
-&lt;div class="controls"&gt;
-  &lt;button onclick="restart()"&gt;🔄 Заново&lt;/button&gt;
-&lt;/div&gt;
-&lt;div class="msg" id="msg"&gt;&lt;/div&gt;
+  <script>
+    const GOOD_CHAIN = [
+      {emoji:'💵', label:'100₽', lvl:0},
+      {emoji:'💸', label:'500₽', lvl:1},
+      {emoji:'💰', label:'1000₽', lvl:2},
+      {emoji:'💳', label:'Карта', lvl:3},
+      {emoji:'💼', label:'Кейс', lvl:4},
+    ];
+    const BAD_CHAIN = [
+      {emoji:'📄', label:'Займ', lvl:0},
+      {emoji:'👔', label:'Коллектор',lvl:1},
+      {emoji:'📊', label:'% Ставка', lvl:2},
+    ];
+    const ROWS=4, COLS=5, MAX_ITEMS=18;
+    let board=[], score=0, won=false;
+    const \$board=document.getElementById('board');
+    const \$score=document.getElementById('score');
+    const \$msg=document.getElementById('msg');
 
-&lt;script&gt;
-const GOOD_CHAIN = [
-  {emoji:'💵', label:'100₽',   lvl:0},
-  {emoji:'💸', label:'500₽',   lvl:1},
-  {emoji:'💰', label:'1000₽',  lvl:2},
-  {emoji:'💳', label:'Карта',  lvl:3},
-  {emoji:'💼', label:'Кейс',   lvl:4},
-];
-const BAD_CHAIN = [
-  {emoji:'📄', label:'Займ',     lvl:0},
-  {emoji:'👔', label:'Коллектор',lvl:1},
-  {emoji:'📊', label:'% Ставка', lvl:2},
-];
-const ROWS=4, COLS=5, MAX_ITEMS=18;
-
-let board=[], score=0, won=false;
-const $board=document.getElementById('board');
-    Morok AI:
-const $score=document.getElementById('score');
-const $msg=document.getElementById('msg');
-
-function initBoard(){
-  board=Array.from({length:ROWS},()=>Array(COLS).fill(null));
-  score=0; won=false; $msg.textContent='';
-  spawnInitial();
-  render();
-}
-
-function spawnInitial(){
-  for(let i=0;i<6;i++) spawnRandom();
-}
-
-function emptyCells(){
-  let res=[];
-  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(!board[r][c]) res.push({r,c});
-  return res;
-}
-
-function countItems(){
-  let n=0;
-  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(board[r][c]) n++;
-  return n;
-}
-
-function spawnRandom(){
-  let ec=emptyCells();
-  if(ec.length===0) return false;
-  let {r,c}=ec[Math.floor(Math.random()ec.length)];
-  let isGood=Math.random()<0.6;
-  let chain=isGood?GOOD_CHAIN:BAD_CHAIN;
-  let rnd=Math.random();
-  let lvlIdx=rnd<0.8?0:rnd<0.95?1:2;
-  board[r][c]={good:isGood, lvlIdx, chain:isGood?'good':'bad'};
-  return true;
-}
-
-function getItem(cell){
-  if(!cell) return null;
-  let chain=cell.good?GOOD_CHAIN:BAD_CHAIN;
-  return chain[cell.lvlIdx];
-}
-
-function mergeResult(cell){
-  let chain=cell.good?GOOD_CHAIN:BAD_CHAIN;
-  if(cell.good && cell.lvlIdx===GOOD_CHAIN.length-1) return null;
-  if(!cell.good && cell.lvlIdx===BAD_CHAIN.length-1) return null;
-  return cell.lvlIdx+1;
-}
-
-function canMerge(a,b){
-  if(!a!b) return false;
-  if(a.good!==b.good) return false;
-  if(a.lvlIdx!==b.lvlIdx) return false;
-  return true;
-}
-
-function doMerge(r1,c1,r2,c2){
-  let a=board[r1][c1], b=board[r2][c2];
-  if(!canMerge(a,b)) return false;
-
-  let nextIdx=mergeResult(a);
-  if(nextIdx===null) return false;
-
-  let chain=a.good?GOOD_CHAIN:BAD_CHAIN;
-  if(!a.good && nextIdx >= BAD_CHAIN.length){
-    board[r1][c1]=null;
-    board[r2][c2]=null;
-    score+=50(a.lvlIdx+1);
-    $msg.textContent='🔥 Вредный предмет уничтожен!';
-  } else {
-    let newCell={good:a.good, lvlIdx:nextIdx, chain:a.good?'good':'bad'};
-    board[r1][c1]=null;
-    board[r2][c2]=newCell;
-    if(a.good){
-      score+=10(nextIdx+1);
-      $msg.textContent=+${10(nextIdx+1)} очков;
-      if(newCell.good && newCell.lvlIdx===GOOD_CHAIN.length-1){
-        won=true;
-        $msg.textContent='🏆 КЕЙС! Ты монополист!';
+    function initBoard(){
+      board=Array.from({length:ROWS},()=>Array(COLS).fill(null));
+      score=0; won=false; \$msg.textContent='';
+      spawnInitial(); render();
+    }
+    function spawnInitial(){ for(let i=0;i<6;i++) spawnRandom(); }
+    function emptyCells(){
+      let res=[];
+      for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(!board[r][c]) res.push({r,c});
+      return res;
+    }
+    function spawnRandom(){
+      if(won) return;
+      let total=0; for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(board[r][c]) total++;
+      if(total>=MAX_ITEMS) return;
+      let empty=emptyCells(); if(!empty.length) return;
+      let pos=empty[Math.floor(Math.random() * empty.length)];
+      let good=Math.random()<0.7;
+      let chain=good?GOOD_CHAIN:BAD_CHAIN;
+      board[pos.r][pos.c]={good:good, lvlIdx:0, chain:good?'good':'bad'};
+    }
+    function getItem(r,c){
+      let cell=board[r][c]; if(!cell) return null;
+      let chain=cell.good?GOOD_CHAIN:BAD_CHAIN;
+      return {...chain[cell.lvlIdx], good:cell.good, lvlIdx:cell.lvlIdx, chain:cell.chain};
+    }
+    function tryMerge(r1,c1,r2,c2){
+      let a=board[r1][c1], b=board[r2][c2];
+      if(!a||!b) return false;
+      if(a.good!==b.good) return false;
+      // good merge
+      if(a.good && a.lvlIdx===b.lvlIdx && a.lvlIdx<GOOD_CHAIN.length-1){
+        let nextIdx=a.lvlIdx+1;
+        board[r1][c1]=null; board[r2][c2]=null;
+        let newCell={good:true, lvlIdx:nextIdx, chain:'good'};
+        let empty=emptyCells(); 
+        if(!empty.length){board[r2][c2]=newCell;}
+        else { 
+          let spot=empty[Math.floor(Math.random() * empty.length)]; 
+          board[spot.r][spot.c]=newCell; 
+        }
+        score += 10 * (nextIdx+1); 
+        \$msg.textContent='+'+(10 * (nextIdx+1))+' очков!';
+        if(newCell.lvlIdx===GOOD_CHAIN.length-1){ won=true; \$msg.textContent='🏆 КЕЙС! Ты монополист!'; }
+        \$score.textContent=score; render(); spawnRandom(); render(); return true;
       }
-    } else {
-      score+=20(a.lvlIdx+1);
-      $msg.textContent=Вредный слит! +${20*(a.lvlIdx+1)};
-    }
-  }
-  $score.textContent=score;
-  return true;
-}
-
-function render(){
-  $board.innerHTML='';
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      let cell=document.createElement('div');
-      cell.className='cell';
-      cell.dataset.r=r;
-      cell.dataset.c=c;
-      let item=board[r][c];
-      if(item){
-        let it=getItem(item);
-        let el=document.createElement('div');
-        el.className='item '+(item.good?(item.lvlIdx===GOOD_CHAIN.length-1?'goal':'good'):'bad');
-        el.dataset.r=r;
-        el.dataset.c=c;
-        el.innerHTML=<span>it.emoji</span><small style="font-size:55%;display:block;">{it.label}</small>;
-        el.addEventListener('pointerdown',onPointerDown);
-        el.addEventListener('touchstart',e=>e.preventDefault());
-        cell.appendChild(el);
+      // bad merge
+      if(!a.good && a.lvlIdx===b.lvlIdx && a.lvlIdx<BAD_CHAIN.length-1){
+        let nextIdx=a.lvlIdx+1;
+        board[r1][c1]=null; board[r2][c2]=null;
+        let newCell={good:false, lvlIdx:nextIdx, chain:'bad'};
+        let empty=emptyCells(); 
+        if(!empty.length){board[r2][c2]=newCell;}
+        else { 
+          let spot=empty[Math.floor(Math.random() * empty.length)]; 
+          board[spot.r][spot.c]=newCell; 
+        }
+        score += 20 * (nextIdx+1); 
+        \$msg.textContent='Вредный слит! +'+(20 * (nextIdx+1));
+        \$score.textContent=score; render(); spawnRandom(); render(); return true;
       }
-      $board.appendChild(cell);
+      // good kills max-level bad
+      if(a.good && !b.good && b.lvlIdx>=BAD_CHAIN.length-1){
+        board[r1][c1]=null; board[r2][c2]=null; 
+        score += 50 * (b.lvlIdx+1);
+        \$msg.textContent='🔥 Вредный предмет уничтожен!';
+        \$score.textContent=score; render(); spawnRandom(); render(); return true;
+      }
+      if(!a.good && b.good && a.lvlIdx>=BAD_CHAIN.length-1){
+        board[r1][c1]=null; board[r2][c2]=null; 
+        score += 50 * (a.lvlIdx+1);
+        \$msg.textContent='🔥 Вредный предмет уничтожен!';
+        \$score.textContent=score; render(); spawnRandom(); render(); return true;
+      }
+      return false;
     }
-  }
-}
 
-let dragItem=null, dragGhost=null, dragFrom=null;
+    // Drag-and-drop
+    let dragItem=null, dragR=-1, dragC=-1, ghost=null;
 
-function onPointerDown(e){
-  if(won) return;
-  e.preventDefault();
-  let el=e.currentTarget;
-  let r=+el.dataset.r, c=+el.dataset.c;
-  dragFrom={r,c};
-  dragItem=board[r][c];
-  let it=getItem(dragItem);
-  dragGhost=document.createElement('div');
-
-dragGhost.className='drag-ghost '+(dragItem.good?'good':'bad');
-  dragGhost.textContent=it.emoji;
-  dragGhost.style.left=e.clientX+'px';
-  dragGhost.style.top=e.clientY+'px';
-  document.body.appendChild(dragGhost);
-  el.classList.add('dragging');
-  el.setPointerCapture(e.pointerId);
-  el.addEventListener('pointermove',onPointerMove);
-  el.addEventListener('pointerup',onPointerUp);
-  el.addEventListener('pointercancel',onPointerUp);
-}
-
-function onPointerMove(e){
-  if(!dragGhost) return;
-  dragGhost.style.left=e.clientX+'px';
-  dragGhost.style.top=e.clientY+'px';
-
-  let target=document.elementFromPoint(e.clientX,e.clientY);
-  document.querySelectorAll('.cell.hover').forEach(c=>c.classList.remove('hover'));
-  if(target){
-    let cell=target.closest('.cell');
-    if(cell && (cell.dataset.r!=dragFrom.rcell.dataset.c!=dragFrom.c)){
-      cell.classList.add('hover');
+    function getCoords(e) {
+      if (e.touches && e.touches.length > 0) {
+        return { x: e.touches.clientX, y: e.touches.clientY };
+      }
+      return { x: e.clientX, y: e.clientY };
     }
-  }
-}
 
-function onPointerUp(e){
-  let el=e.currentTarget;
-  el.removeEventListener('pointermove',onPointerMove);
-  el.removeEventListener('pointerup',onPointerUp);
-  el.removeEventListener('pointercancel',onPointerUp);
-  el.classList.remove('dragging');
-  document.querySelectorAll('.cell.hover').forEach(c=>c.classList.remove('hover'));
+    function onDown(e){
+      if(won) return;
+      let cell=e.target.closest('.cell'); if(!cell) return;
+      let r=+cell.dataset.row, c=+cell.dataset.col;
+      if(!board[r][c]) return;
+      dragItem=board[r][c]; dragR=r; dragC=c;
+      let it=getItem(r,c);
+      ghost=document.createElement('div'); ghost.className='drag-ghost '+(it.good?'good':'bad');
+      ghost.textContent=it.emoji; document.body.appendChild(ghost);
+      cell.querySelector('.item').classList.add('dragging');
+      const coords = getCoords(e);
+      ghost.style.left = coords.x + 'px';
+      ghost.style.top = coords.y + 'px';
+    }
 
-  if(dragGhost){
-    dragGhost.remove();
-    dragGhost=null;
-  }
+    function onMove(e){
+      if(!ghost) return;
+      e.preventDefault();
+      const coords = getCoords(e);
+      ghost.style.left = coords.x + 'px'; 
+      ghost.style.top = coords.y + 'px';
+    }
 
-  let target=document.elementFromPoint(e.clientX,e.clientY);
-  let toCell=target?target.closest('.cell'):null;
-  if(!toCell){
-    dragItem=null; dragFrom=null; return;
-  }
-  let tr=+toCell.dataset.r, tc=+toCell.dataset.c;
+    function onUp(e){
+      if(!ghost) return;
+      document.querySelectorAll('.item.dragging').forEach(el=>el.classList.remove('dragging'));
+      ghost.remove(); ghost=null;
+      const coords = getCoords(e);
+      let target=document.elementFromPoint(coords.x, coords.y);
+      if(!target) { dragItem=null; return; }
+      let cell=target.closest('.cell');
+      if(!cell) { dragItem=null; return; }
+      let r=+cell.dataset.row, c=+cell.dataset.col;
+      if(r===dragR && c===dragC) { dragItem=null; return; }
+      if(tryMerge(dragR,dragC,r,c)) { dragItem=null; return; }
+      if(!board[r][c]){
+        board[r][c]=board[dragR][dragC];
+        board[dragR][dragC]=null;
+        render(); spawnRandom(); render();
+      }
+      dragItem=null;
+    }
 
-  if(tr===dragFrom.r && tc===dragFrom.c){
-    dragItem=null; dragFrom=null; return;
-  }
+    \$board.addEventListener('touchstart',onDown,{passive:true});
+    \$board.addEventListener('touchmove',onMove,{passive:false});
+    \$board.addEventListener('touchend',onUp);
+    \$board.addEventListener('touchcancel',onUp);
+    \$board.addEventListener('mousedown',onDown);
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
 
-  let merged=doMerge(dragFrom.r,dragFrom.c,tr,tc);
-
-  if(!merged){
-    $msg.textContent='❌ Эти предметы не сливаются';
-  }
-
-  dragItem=null; dragFrom=null;
-
-  if(!won && countItems()<MAX_ITEMS){
-    spawnRandom();
-  }
-
-  if(!won && emptyCells().length===0){
-    let canMove=false;
-    for(let r=0;r<ROWS&&!canMove;r++){
-      for(let c=0;c<COLS&&!canMove;c++){
-        if(!board[r][c]) continue;
-        let dirs=[[0,1],[1,0],[0,-1],[-1,0]];
-        for(let[dr,dc] of dirs){
-          let nr=r+dr, nc=c+dc;
-          if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&board[nr][nc]&&canMerge(board[r][c],board[nr][nc])){
-            canMove=true; break;
+    function render(){
+      \$board.innerHTML='';
+      for(let r=0;r<ROWS;r++){
+        for(let c=0;c<COLS;c++){
+          let cell=document.createElement('div'); cell.className='cell';
+          cell.dataset.row=r; cell.dataset.col=c;
+          let item=board[r][c];
+          if(item){
+            let it=getItem(r,c);
+            let el=document.createElement('div');
+            el.className='item '+(it.good?'good':'bad')+(won&&it.good&&it.lvlIdx===GOOD_CHAIN.length-1?' goal':'');
+            el.innerHTML=it.emoji+'<small style="font-size:0.5em">'+it.label+'</small>';
+            cell.appendChild(el);
           }
+          \$board.appendChild(cell);
         }
       }
     }
-    if(!canMove){
-      $msg.textContent='😵 Монопольный тупик. Жми «Заново»!';
-    }
-  }
 
-  render();
-  if(won) $msg.textContent='🏆 Ты сорвал КЕЙС и стал Монополистом!';
-}
-
-function restart(){
-  initBoard();
-  $score.textContent='0';
-}
-
-initBoard();
-</script>
+    function restart(){ initBoard(); }
+    initBoard();
+  </script>
 </body>
 </html>
