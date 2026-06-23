@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Мажор 2048</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;touch-action:none;-webkit-tap-highlight-color:transparent;background:#2B2D23;font-family:'Segoe UI',system-ui,sans-serif;user-select:none;-webkit-user-select:none}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px}
+.header{display:flex;align-items:center;justify-content:space-between;width:min(95vw,420px);gap:8px}
+.title{font-size:clamp(22px,6vw,32px);font-weight:900;color:#E6D7B8;text-shadow:0 0 10px rgba(230,215,184,0.3);letter-spacing:2px}
+.timer{font-size:clamp(18px,5vw,26px);font-weight:700;color:#D4AF37;background:#3A3D30;border:2px solid #8B7355;border-radius:12px;padding:6px 16px;min-width:90px;text-align:center;font-variant-numeric:tabular-nums}
+.score-box{background:#3A3D30;border:2px solid #8B7355;border-radius:12px;padding:6px 14px;text-align:center}
+.score-label{font-size:11px;color:#8B7355;text-transform:uppercase;letter-spacing:2px}
+.score-value{font-size:clamp(16px,4.5vw,24px);font-weight:800;color:#E6D7B8}
+.controls{display:flex;gap:8px;width:min(95vw,420px);justify-content:center;flex-wrap:wrap}
+.btn{background:#8B7F47;color:#E6D7B8;border:2px solid #8B7355;border-radius:10px;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.15s;letter-spacing:1px;touch-action:manipulation}
+.btn:active{background:#6B5F37;transform:scale(0.95)}
+.btn.music{width:44px;height:44px;padding:0;font-size:20px;border-radius:50%}
+.board-wrap{background:#4A5548;border:4px solid #8B7355;border-radius:16px;padding:8px;width:min(95vw,420px);aspect-ratio:1;box-shadow:0 0 30px rgba(0,0,0,0.5),inset 0 0 15px rgba(0,0,0,0.3)}
+.board{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:6px;width:100%;height:100%}
+.tile{background:#3A3D30;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#E6D7B8;transition:transform 0.18s ease-out,background 0.15s,color 0.15s;position:relative;overflow:hidden;font-size:clamp(12px,3vw,18px);text-align:center;line-height:1.2;box-shadow:inset 0 2px 4px rgba(255,255,255,0.05)}
+.tile.pop{animation:pop 0.2s ease-out}
+.tile.merge{animation:mergePop 0.25s ease-out}
+@keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes mergePop{0%{transform:scale(1)}40%{transform:scale(1.3)}100%{transform:scale(1)}}
+.leaderboard{width:min(95vw,420px);background:#3A3D30;border:2px solid #8B7355;border-radius:14px;padding:12px;max-height:160px;overflow-y:auto}
+.leaderboard h3{color:#D4AF37;text-align:center;font-size:15px;margin-bottom:8px;letter-spacing:2px}
+.leaderboard ol{list-style:none;padding:0;margin:0}
+.leaderboard li{display:flex;justify-content:space-between;padding:4px 10px;color:#E6D7B8;font-size:13px;border-bottom:1px solid #4A5548}
+.leaderboard li:last-child{border-bottom:none}
+.leaderboard .pos{color:#D4AF37;font-weight:700;width:24px}
+.leaderboard .name{flex:1;text-align:left;margin-left:8px}
+.leaderboard .pts{color:#8B7355;font-weight:600}
+.msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#2B2D23;border:3px solid #D4AF37;border-radius:20px;padding:30px 40px;text-align:center;z-index:100;display:none;box-shadow:0 0 50px rgba(212,175,55,0.4)}
+.msg.show{display:block;animation:fadeIn 0.3s}
+.msg h2{color:#D4AF37;font-size:28px;margin-bottom:10px}
+.msg p{color:#E6D7B8;font-size:16px;margin-bottom:20px}
+@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title">💎 МАЖОР</div>
+  <div class="timer" id="timer">00:00</div>
+  <div class="score-box">
+    <div class="score-label">СЧЁТ</div>
+    <div class="score-value" id="score">0</div>
+  </div>
+</div>
+
+<div class="board-wrap"><div class="board" id="board"></div></div>
+
+<div class="controls">
+  <button class="btn" onclick="newGame()">🔄 НОВАЯ</button>
+  <button class="btn music" id="musicBtn" onclick="toggleMusic()">♪</button>
+  <button class="btn" onclick="showLeaderboard()">🏆 ТОП</button>
+</div>
+
+<div class="leaderboard" id="leaderboard" style="display:none">
+  <h3>🏆 ЛИДЕРЫ</h3>
+  <ol id="leaderList"></ol>
+</div>
+
+<div class="msg" id="msgBox">
+  <h2 id="msgTitle"></h2>
+  <p id="msgText"></p>
+  <button class="btn" onclick="closeMsg()">OK</button>
+</div>
+
+<script>
+// === КОНФИГ ===
+const SIZE = 5;
+const LEVELS = [
+  {val:1,   label:'10₽',     bg:'#3A3D30', color:'#E6D7B8', sz:'18px'},
+  {val:2,   label:'50₽',     bg:'#4A4030', color:'#E6D7B8', sz:'18px'},
+  {val:3,   label:'100₽',    bg:'#5C4A3A', color:'#E6D7B8', sz:'17px'},
+  {val:4,   label:'200₽',    bg:'#5C4030', color:'#FFD700', sz:'17px'},
+  {val:5,   label:'500₽',    bg:'#6B3A3A', color:'#FFD700', sz:'16px'},
+  {val:6,   label:'1000₽',   bg:'#7B3A50', color:'#FFD700', sz:'15px'},
+  {val:7,   label:'2000₽',   bg:'#5C2060', color:'#FFD700', sz:'14px'},
+  {val:8,   label:'5000₽',   bg:'#3A2060', color:'#FFD700', sz:'14px'},
+  {val:9,   label:'10000₽',  bg:'#1A3A5C', color:'#FFD700', sz:'13px'},
+  {val:10,  label:'💼 Чемодан', bg:'#2A1A4A', color:'#D4AF37', sz:'12px'},
+  {val:11,  label:'🪙 Слиток',  bg:'#4A3A00', color:'#FFD700', sz:'12px'},
+  {val:12,  label:'🚗 Авто',    bg:'#1A3A3A', color:'#D4AF37', sz:'12px'},
+  {val:13,  label:'🏦 Банк',    bg:'#0A2A0A', color:'#D4AF37', sz:'12px'},
+  {val:14,  label:'🛥 Яхта',   bg:'#003A4A', color:'#D4AF37', sz:'11px'},
+  {val:15,  label:'👑 МАГНАТ', bg:'#4A2A00', color:'#FFD700', sz:'11px'}
+];
+
+// === СОСТОЯНИЕ ===
+let grid = [];
+let score = 0;
+let timerSec = 0;
+let timerInterval = null;
+let gameOver = false;
+let won = false;
+let movedThisTurn = false;
+let mergedThisTurn = [];
+
+// === АУДИО ===
+let audioCtx = null;
+let musicOn = false;
+let musicGain = null;
+let musicOscillators = [];
+
+function initAudio(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = 0.04;
+    musicGain.connect(audioCtx.destination);
+  }
+}
+
+function playMoveSound(){
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 440;
+  g.gain.value = 0.08;
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.1);
+  osc.stop(audioCtx.currentTime+0.1);
+}
+
+function playMergeSound(){
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = 660;
+  g.gain.value = 0.12;
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.2);
+  osc.stop(audioCtx.currentTime+0.2);
+}
+
+function startMusic(){
+  if(!audioCtx||musicOn) return;
+  musicOn = true;
+  document.getElementById('musicBtn').textContent = '♪';
+  const notes = [262,294,330,349,392,440,494,523];
+  let idx = 0;
+  musicOscillators = [];
+  function nextNote(){
+    if(!musicOn) return;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = notes[idx%notes.length];
+    g.gain.value = 0.03;
+    osc.connect(g); g.connect(musicGain);
+    osc.start();
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+1.2);
+    osc.stop(audioCtx.currentTime+1.2);
+    musicOscillators.push(osc);
+    idx++;
+    setTimeout(nextNote, 1100);
+  }
+  nextNote();
+}
+
+function stopMusic(){
+  musicOn = false;
+  document.getElementById('musicBtn').textContent = '♫';
+  musicOscillators.forEach(o=>{try{o.stop()}catch(e){}});
+  musicOscillators = [];
+}
+
+function toggleMusic(){
+  initAudio();
+  if(musicOn) stopMusic(); else startMusic();
+}
+
+// === ТАЙМЕР ===
+function startTimer(){
+  if(timerInterval) return;
+  timerInterval = setInterval(()=>{
+    timerSec++;
+    const m = Math.floor(timerSec/60).toString().padStart(2,'0');
+    const s = (timerSec%60).toString().padStart(2,'0');
+    document.getElementById('timer').textContent = m+':'+s;
+  },1000);
+}
+
+function stopTimer(){
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+// === ДОСКА ===
+function emptyGrid(){
+  return Array.from({length:SIZE},()=>Array(SIZE).fill(0));
+}
+
+function addRandomTile(){
+  const empty = [];
+  for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++) if(grid[r][c]===0) empty.push([r,c]);
+  if(empty.length===0) return;
+  const [r,c] = empty[Math.floor(Math.random()*empty.length)];
+  grid[r][c] = Math.random()<0.9 ? 1 : 2;
+}
+
+function getTileData(val){
+  if(val===0) return null;
+  const idx = Math.min(val-1, LEVELS.length-1);
+  return LEVELS[idx];
+}
+
+function renderBoard(){
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      const val = grid[r][c];
+      if(val>0){
+        const td = getTileData(val);
+        tile.textContent = td.label;
+        tile.style.background = td.bg;
+        tile.style.color = td.color;
+        tile.style.fontSize = td.sz;
+      }
+      tile.dataset.r = r;
+      tile.dataset.c = c;
+      board.appendChild(tile);
+    }
+  }
+  document.getElementById('score').textContent = score;
+}
+function animatePop(r,c){
+  const tile = document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
+  if(tile){ tile.classList.remove('pop','merge'); void tile.offsetWidth; tile.classList.add('pop'); }
+}
+function animateMerge(r,c){
+  const tile = document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
+  if(tile){ tile.classList.remove('pop','merge'); void tile.offsetWidth; tile.classList.add('merge'); }
+}
+
+// === ЛОГИКА ХОДА ===
+function slideLeft(row){
+  let arr = row.filter(v=>v!==0);
+  let merged = Array(arr.length).fill(false);
+  let newArr = [];
+  let scoreAdd = 0;
+  for(let i=0;i<arr.length;i++){
+    if(i<arr.length-1 && arr[i]===arr[i+1] && !merged[i] && !merged[i+1]){
+      const newVal = arr[i]+1;
+      newArr.push(newVal);
+      scoreAdd += newVal * 10;
+      merged[i] = true;
+      merged[i+1] = true;
+      i++;
+    } else {
+      newArr.push(arr[i]);
+    }
+  }
+  while(newArr.length<SIZE) newArr.push(0);
+  return {row:newArr, score:scoreAdd, merged:merged};
+}
+
+function moveGrid(direction){
+  let totalScore = 0;
+  let newGrid = emptyGrid();
+  let mergeCells = [];
+  movedThisTurn = false;
+
+  if(direction==='left'){
+    for(let r=0;r<SIZE;r++){
+      const {row,score:sc} = slideLeft(grid[r]);
+      newGrid[r] = row;
+      totalScore += sc;
+      if(row.join(',')!==grid[r].join(',')) movedThisTurn = true;
+      // Отмечаем слитые (где значение отличается от фильтрованного)
+      let filtered = grid[r].filter(v=>v!==0);
+      let fi=0;
+      for(let c=0;c<SIZE;c++){
+        if(row[c]!==0 && fi<filtered.length && row[c]>filtered[fi]){
+          mergeCells.push([r,c]);
+        }
+        if(row[c]!==0) fi++;
+      }
+    }
+  } else if(direction==='right'){
+    for(let r=0;r<SIZE;r++){
+      const rev = [...grid[r]].reverse();
+      const {row,score:sc} = slideLeft(rev);
+      const rowBack = row.reverse();
+      newGrid[r] = rowBack;
+      totalScore += sc;
+      if(rowBack.join(',')!==grid[r].join(',')) movedThisTurn = true;
+    }
+  } else if(direction==='up'){
+    for(let c=0;c<SIZE;c++){
+      const col = grid.map(r=>r[c]);
+      const {row,score:sc} = slideLeft(col);
+      totalScore += sc;
+      for(let r=0;r<SIZE;r++){
+        newGrid[r][c] = row[r];
+        if(row[r]!==grid[r][c]) movedThisTurn = true;
+      }
+    }
+  } else if(direction==='down'){
+    for(let c=0;c<SIZE;c++){
+      const col = grid.map(r=>r[c]).reverse();
+      const {row,score:sc} = slideLeft(col);
+      const rowBack = row.reverse();
+      totalScore += sc;
+      for(let r=0;r<SIZE;r++){
+        newGrid[r][c] = rowBack[r];
+        if(rowBack[r]!==grid[r][c]) movedThisTurn = true;
+      }
+    }
+  }
+
+  if(!movedThisTurn) return false;
+
+  grid = newGrid;
+  score += totalScore;
+  playMoveSound();
+  if(totalScore>0) playMergeSound();
+  addRandomTile();
+  renderBoard();
+  checkGameState();
+  return true;
+}
+
+// === ПРОВЕРКА ===
+function checkGameState(){
+  // Проверка на Магната (уровень 15)
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      if(grid[r][c]>=15 && !won){
+        won = true;
+        stopTimer();
+        const m = Math.floor(timerSec/60).toString().padStart(2,'0');
+        const s = (timerSec%60).toString().padStart(2,'0');
+        showMsg('👑 МАГНАТ!','Ты дошёл до вершины за '+m+':'+s+'\nСчёт: '+score, true);
+        return;
+      }
+    }
+  }
+  // Есть ли ходы
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      if(grid[r][c]===0) return;
+      if(c<SIZE-1 && grid[r][c]===grid[r][c+1]) return;
+      if(r<SIZE-1 && grid[r][c]===grid[r+1][c]) return;
+    }
+  }
+  gameOver = true;
+  stopTimer();
+  const m = Math.floor(timerSec/60).toString().padStart(2,'0');
+  const s = (timerSec%60).toString().padStart(2,'0');
+  showMsg('💀 КОНЕЦ','Ходов больше нет.\nВремя: '+m+':'+s+'\nСчёт: '+score, true);
+}
+
+// === НОВАЯ ИГРА ===
+function newGame(){
+  stopTimer();
+  grid = emptyGrid();
+  score = 0;
+  timerSec = 0;
+  gameOver = false;
+  won = false;
+  movedThisTurn = false;
+  mergedThisTurn = [];
+  document.getElementById('timer').textContent = '00:00';
+  document.getElementById('score').textContent = '0';
+  addRandomTile();
+  addRandomTile();
+  renderBoard();
+  startTimer();
+}
+
+// === СООБЩЕНИЯ ===
+function showMsg(title,text,saveScore){
+  document.getElementById('msgTitle').textContent = title;
+  document.getElementById('msgText').textContent = text;
+  document.getElementById('msgBox').classList.add('show');
+  if(saveScore) saveToLeaderboard();
+}
+
+function closeMsg(){
+  document.getElementById('msgBox').classList.remove('show');
+}
+
+// === ЛИДЕРБОРД ===
+function getLeaderboard(){
+  try{
+    return JSON.parse(localStorage.getItem('major2048_leaders')||'[]');
+  }catch(e){return[]}
+}
+function saveToLeaderboard(){
+  const leaders = getLeaderboard();
+  const name = 'Мажор';
+  const m = Math.floor(timerSec/60).toString().padStart(2,'0');
+  const s = (timerSec%60).toString().padStart(2,'0');
+  leaders.push({name,score,time:m+':'+s,date:new Date().toLocaleDateString('ru')});
+  leaders.sort((a,b)=>b.score-a.score);
+  if(leaders.length>10) leaders.length = 10;
+  try{localStorage.setItem('major2048_leaders',JSON.stringify(leaders));}catch(e){}
+}
+
+function showLeaderboard(){
+  const lb = document.getElementById('leaderboard');
+  const list = document.getElementById('leaderList');
+  const leaders = getLeaderboard();
+  if(leaders.length===0){
+    list.innerHTML = '<li style="justify-content:center;color:#8B7355">Пока пусто — стань первым!</li>';
+  } else {
+    list.innerHTML = leaders.map((l,i)=>`
+      <li>
+        <span class="pos">#${i+1}</span>
+        <span class="name">${l.name}</span>
+        <span>${l.time}</span>
+        <span class="pts">${l.score}₽</span>
+      </li>
+    `).join('');
+  }
+  lb.style.display = lb.style.display==='none'?'block':'none';
+}
+
+// === УПРАВЛЕНИЕ ===
+let touchStartX = 0, touchStartY = 0;
+const boardEl = document.querySelector('.board-wrap');
+
+boardEl.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  initAudio();
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+},{passive:false});
+
+boardEl.addEventListener('touchend',e=>{
+  e.preventDefault();
+  if(gameOver||won) return;
+  const dx = (e.changedTouches[0]?.clientX||touchStartX) - touchStartX;
+  const dy = (e.changedTouches[0]?.clientY||touchStartY) - touchStartY;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+  if(Math.max(absDx,absDy)<30) return;
+  const oldGrid = grid.map(r=>[...r]);
+  if(absDx>absDy){
+    if(dx>0) moveGrid('right'); else moveGrid('left');
+  } else {
+    if(dy>0) moveGrid('down'); else moveGrid('up');
+  }
+},{passive:false});
+
+document.addEventListener('keydown',e=>{
+  if(gameOver||won) return;
+  initAudio();
+  const oldGrid = grid.map(r=>[...r]);
+  switch(e.key){
+    case 'ArrowLeft': moveGrid('left'); break;
+    case 'ArrowRight': moveGrid('right'); break;
+    case 'ArrowUp': moveGrid('up'); break;
+    case 'ArrowDown': moveGrid('down'); break;
+  }
+});
+
+// === СТАРТ ===
+newGame();
+</script>
+</body>
+</html>
