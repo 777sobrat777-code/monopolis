@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Мажор 2048</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #2B2D23;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.game-wrapper {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* --- Header --- */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.title-block h1 {
+  font-size: 28px;
+  color: #E6D7B8;
+  letter-spacing: 1px;
+  font-weight: normal;
+  text-shadow: 1px 1px 0 #8B7355;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #8B7F47;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* --- Score + Timer row --- */
+.info-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+.score-box {
+  flex: 1;
+  background: #4A5548;
+  border: 2px solid #8B7355;
+  border-radius: 8px;
+  padding: 6px 10px;
+  text-align: center;
+}
+
+.score-label {
+  font-size: 11px;
+  color: #8B7F47;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.score-value {
+  font-size: 22px;
+  color: #E6D7B8;
+  font-weight: bold;
+}
+
+.timer-box {
+  flex: 1;
+  background: #4A5548;
+  border: 2px solid #8B7355;
+  border-radius: 8px;
+  padding: 6px 10px;
+  text-align: center;
+}
+
+.timer-label {
+  font-size: 11px;
+  color: #8B7F47;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.timer-value {
+  font-size: 22px;
+  color: #E6D7B8;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Board --- */
+.board-container {
+  background: #4A5548;
+  border: 3px solid #8B7355;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: 8px;
+  aspect-ratio: 1 / 1;
+}
+
+.tile {
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: #E6D7B8;
+  transition: transform 0.1s, background 0.15s;
+  position: relative;
+  cursor: default;
+}
+
+.tile-merged {
+  transform: scale(1.1);
+}
+
+.tile-new {
+  animation: pop-in 0.2s ease-out;
+}
+
+@keyframes pop-in {
+  0%   { transform: scale(0); opacity: 0; }
+  80%  { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- Tile levels (15) --- */
+.tile-0  { background: #3A3E30; color: transparent; }
+.tile-1  { background: #6B5B3A; font-size: 16px; }  /* 10₽ */
+.tile-2  { background: #7D6B45; font-size: 16px; }  /* 50₽ */
+.tile-3  { background: #8B7355; font-size: 15px; }  /* 100₽ */
+.tile-4  { background: #6B7A5E; font-size: 15px; }  /* 500₽ */
+.tile-5  { background: #5A8A5A; font-size: 14px; }  /* 1000₽ */
+.tile-6  { background: #4A7A6A; font-size: 14px; }  /* 2000₽ */
+.tile-7  { background: #5A6A8A; font-size: 14px; }  /* 5000₽ */
+.tile-8  { background: #6A5A7A; font-size: 13px; }  /* 10000₽ */
+.tile-9  { background: #8A6A3A; font-size: 13px; }  /* Чемодан */
+.tile-10 { background: #9A8A4A; font-size: 12px; }  /* Слиток */
+.tile-11 { background: #7A3A3A; font-size: 12px; }  /* Авто */
+.tile-12 { background: #3A4A7A; font-size: 12px; }  /* Банк */
+.tile-13 { background: #4A3A3A; font-size: 11px; }  /* Яхта */
+.tile-14 { background: #3A2A1A; font-size: 11px; }  /* Особняк */
+.tile-15 { background: #1A1A0A; font-size: 12px; text-shadow: 0 0 8px #E6D7B8; } /* Магнат */
+
+.tile-score {
+  position: absolute;
+  bottom: 2px;
+  right: 5px;
+  font-size: 9px;
+  opacity: 0.6;
+  color: #E6D7B8;
+}
+
+/* --- Buttons --- */
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 0 4px;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px 8px;
+  border: 2px solid #8B7355;
+  border-radius: 10px;
+  background: #8B7F47;
+  color: #E6D7B8;
+  font-family: 'Georgia', serif;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+  background: #6B5F37;
+  transform: scale(0.96);
+}
+
+.btn-music {
+  background: #4A5548;
+  font-size: 16px;
+  padding: 10px 14px;
+  flex: 0 0 auto;
+}
+
+.btn-music.playing {
+  background: #6B5B3A;
+}
+
+/* --- Game Over overlay --- */
+.overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(43, 45, 35, 0.92);
+  z-index: 10;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.overlay.active {
+  display: flex;
+}
+
+.overlay-box {
+  background: #4A5548;
+  border: 3px solid #8B7355;
+  border-radius: 16px;
+  padding: 30px 24px;
+  text-align: center;
+  max-width: 320px;
+}
+
+.overlay-title {
+  font-size: 26px;
+  color: #E6D7B8;
+  margin-bottom: 12px;
+}
+
+.overlay-text {
+  font-size: 16px;
+  color: #8B7F47;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.overlay-text strong {
+  color: #E6D7B8;
+  font-size: 18px;
+}
+
+.overlay-btn {
+  margin-top: 18px;
+  padding: 12px 36px;
+  background: #8B7F47;
+  border: 2px solid #8B7355;
+  border-radius: 10px;
+  color: #E6D7B8;
+  font-family: 'Georgia', serif;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: background 0.15s;
+}
+
+.overlay-btn:active {
+  background: #6B5F37;
+}
+
+/* --- Footer --- */
+.footer {
+  text-align: center;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #8B7F47;
+  letter-spacing: 1px;
+}
+</style>
+</head>
+<body>
+
+<div class="game-wrapper" id="gameWrapper">
+  <div class="header">
+    <div class="title-block">
+      <h1>МАЖОР 2048</h1>
+      <div class="subtitle">Ретро-люкс</div>
+    </div>
+    <button class="btn btn-music" id="btnMusic" onclick="toggleMusic()">♪</button>
+  </div>
+
+  <div class="info-bar">
+    <div class="score-box">
+      <div class="score-label">Счёт</div>
+      <div class="score-value" id="scoreDisplay">0 ₽</div>
+    </div>
+    <div class="timer-box">
+      <div class="timer-label">Время</div>
+      <div class="timer-value" id="timerDisplay">00:00</div>
+    </div>
+  </div>
+
+  <div class="board-container">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="newGame()">Новая игра</button>
+  </div>
+
+  <div class="footer">Дойди до Магната</div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <div class="overlay-title" id="overlayTitle">Игра окончена</div>
+    <div class="overlay-text" id="overlayText"></div>
+    <button class="overlay-btn" onclick="newGame()">Играть снова</button>
+  </div>
+</div>
+
+<script>
+// ==================== GAME ENGINE ====================
+
+const SIZE = 5;
+const LEVELS = [
+  { name: '10 ₽',       value: 10 },
+  { name: '50 ₽',       value: 50 },
+  { name: '100 ₽',      value: 100 },
+  { name: '500 ₽',      value: 500 },
+  { name: '1 000 ₽',    value: 1000 },
+  { name: '2 000 ₽',    value: 2000 },
+  { name: '5 000 ₽',    value: 5000 },
+  { name: '10 000 ₽',   value: 10000 },
+  { name: 'Чемодан',    value: 20000 },
+  { name: 'Слиток',     value: 50000 },
+  { name: 'Авто',       value: 100000 },
+  { name: 'Банк',       value: 500000 },
+  { name: 'Яхта',       value: 1000000 },
+  { name: 'Особняк',    value: 5000000 },
+  { name: 'Магнат',     value: 10000000 }
+];
+
+let board = [];
+let score = 0;
+let gameOver = false;
+let winShown = false;
+let timerSeconds = 0;
+let timerInterval = null;
+let musicPlaying = false;
+let audioCtx = null;
+let audioUnlocked = false;
+
+// --- Audio ---
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioUnlocked = true;
+  if (musicPlaying) startMusicLoop();
+}
+
+function startMusicLoop() {
+  if (!audioCtx || !musicPlaying) return;
+  // Simple retro melody loop
+  playNote(523.25, 0.15, 0); setTimeout(() => playNote(659.25, 0.15, 0.2), 200);
+  setTimeout(() => playNote(783.99, 0.15, 0.4), 400); setTimeout(() => playNote(659.25, 0.15, 0.6), 600);
+  setTimeout(() => playNote(523.25, 0.25, 0.9), 900); setTimeout(() => playNote(587.33, 0.15, 1.3), 1300);
+  setTimeout(() => playNote(523.25, 0.15, 1.5), 1500); setTimeout(() => playNote(440.00, 0.3, 1.7), 1700);
+}
+
+function playNote(freq, dur, delay) {
+  if (!audioCtx || !musicPlaying || gameOver) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.06, audioCtx.currentTime + delay);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + dur);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(audioCtx.currentTime + delay);
+  osc.stop(audioCtx.currentTime + delay + dur);
+}
+
+function toggleMusic() {
+  const btn = document.getElementById('btnMusic');
+  if (!audioUnlocked) unlockAudio();
+  musicPlaying = !musicPlaying;
+  if (musicPlaying) {
+    btn.classList.add('playing');
+    startMusicLoop();
+  } else {
+    btn.classList.remove('playing');
+  }
+}
+
+// --- Timer ---
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    timerSeconds++;
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timerSeconds / 60);
+  const s = timerSeconds % 60;
+  document.getElementById('timerDisplay').textContent =
+    String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+// --- Board ---
+function initBoard() {
+  board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+  score = 0;
+  gameOver = false;
+  winShown = false;
+  timerSeconds = 0;
+  stopTimer();
+  updateTimerDisplay();
+  updateScoreDisplay();
+  document.getElementById('overlay').classList.remove('active');
+  spawnTile();
+  spawnTile();
+  renderBoard();
+}
+
+function spawnTile() {
+  const empty = [];
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (board[r][c] === 0) empty.push({ r, c });
+  if (empty.length === 0) return;
+  const { r, c } = empty[Math.floor(Math.random() * empty.length)];
+  board[r][c] = Math.random() < 0.7 ? 1 : 2; // level 1 or 2
+}
+
+function renderBoard() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile tile-' + board[r][c];
+      if (board[r][c] > 0) {
+        tile.textContent = LEVELS[board[r][c] - 1].name;
+        const scoreSpan = document.createElement('span');
+        scoreSpan.className = 'tile-score';
+        scoreSpan.textContent = LEVELS[board[r][c] - 1].value.toLocaleString() + '₽';
+        tile.appendChild(scoreSpan);
+      }
+      boardEl.appendChild(tile);
+    }
+  }
+}
+
+function updateScoreDisplay() {
+  document.getElementById('scoreDisplay').textContent = score.toLocaleString() + ' ₽';
+}
+
+// --- Movement ---
+function slideRow(row) {
+  let arr = row.filter(v => v !== 0);
+  for (let i = 0; i < arr.length - 1; i++) {
+    if (arr[i] === arr[i + 1] && arr[i] < LEVELS.length) {
+      arr[i]++;
+      score += LEVELS[arr[i] - 1].value;
+      arr.splice(i + 1, 1);
+      arr.push(0);
+    }
+  }
+  while (arr.length < SIZE) arr.push(0);
+  return arr;
+}
+
+function move(direction) {
+  if (gameOver) return false;
+  let moved = false;
+  const oldBoard = board.map(r => [...r]);
+
+  if (direction === 'left') {
+    for (let r = 0; r < SIZE; r++) {
+      const newRow = slideRow(board[r]);
+      if (newRow.join(',') !== board[r].join(',')) moved = true;
+      board[r] = newRow;
+    }
+  } else if (direction === 'right') {
+    for (let r = 0; r < SIZE; r++) {
+      const reversed = [...board[r]].reverse();
+      const slid = slideRow(reversed);
+      const newRow = slid.reverse();
+      if (newRow.join(',') !== board[r].join(',')) moved = true;
+      board[r] = newRow;
+    }
+  } else if (direction === 'up') {
+    for (let c = 0; c < SIZE; c++) {
+      const col = board.map(r => r[c]);
+      const newCol = slideRow(col);
+      for (let r = 0; r < SIZE; r++) {
+        if (board[r][c] !== newCol[r]) moved = true;
+        board[r][c] = newCol[r];
+      }
+    }
+  } else if (direction === 'down') {
+    for (let c = 0; c < SIZE; c++) {
+      const col = board.map(r => r[c]).reverse();
+      const slid = slideRow(col);
+      const newCol = slid.reverse();
+      for (let r = 0; r < SIZE; r++) {
+        if (board[r][c] !== newCol[r]) moved = true;
+        board[r][c] = newCol[r];
+      }
+    }
+  }
+
+  if (moved) {
+    spawnTile();
+    renderBoard();
+    updateScoreDisplay();
+
+    // Check for level 15 (Magant)
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (board[r][c] === 15 && !winShown) {
+          winShown = true;
+          // Keep playing but show subtle win
+        }
+      }
+    }
+
+    if (isGameOver()) {
+      gameOver = true;
+      stopTimer();
+      showGameOver();
+    }
+  }
+
+  return moved;
+}
+
+function isGameOver() {
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (board[r][c] === 0) return false;
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE - 1; c++)
+      if (board[r][c] === board[r][c + 1]) return false;
+  for (let c = 0; c < SIZE; c++)
+    for (let r = 0; r < SIZE - 1; r++)
+      if (board[r][c] === board[r + 1][c]) return false;
+  return true;
+}
+
+function showGameOver() {
+  document.getElementById('overlay').classList.add('active');
+  const maxLevel = Math.max(...board.flat());
+  let title, text;
+  if (maxLevel >= 15) {
+    title = 'МАГНАТ!';
+    text = 'Ты достиг вершины.<br>Время: <strong>' + formatTime(timerSeconds) + '</strong><br>Счёт: <strong>' + score.toLocaleString() + ' ₽</strong>';
+  } else {
+    title = 'Игра окончена';
+    text = 'До Магната не дотянул.<br>Время: <strong>' + formatTime(timerSeconds) + '</strong><br>Счёт: <strong>' + score.toLocaleString() + ' ₽</strong>';
+  }
+  document.getElementById('overlayTitle').textContent = title;
+  document.getElementById('overlayText').innerHTML = text;
+}
+
+function newGame() {
+  stopTimer();
+  initBoard();
+}
+
+// --- Touch / Mouse ---
+let touchStartX = 0, touchStartY = 0;
+let touchMoved = false;
+
+document.addEventListener('touchstart', (e) => {
+  if (e.target.closest('button')) return;
+  unlockAudio();
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchMoved = false;
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+  if (gameOver) return;
+  const dx = e.touches[0].clientX - touchStartX;
+  const dy = e.touches[0].clientY - touchStartY;
+  if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+    if (!touchMoved) {
+      touchMoved = true;
+      if (!timerInterval && !gameOver) startTimer();
+      if (Math.abs(dx) > Math.abs(dy)) {
+        move(dx > 0 ? 'right' : 'left');
+      } else {
+        move(dy > 0 ? 'down' : 'up');
+      }
+    }
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }
+}, { passive: false });
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  if (gameOver) return;
+  unlockAudio();
+  const keyMap = {
+    'ArrowLeft': 'left', 'ArrowRight': 'right',
+    'ArrowUp': 'up', 'ArrowDown': 'down',
+    'a': 'left', 'd': 'right', 'w': 'up', 's': 'down'
+  };
+  const dir = keyMap[e.key];
+  if (dir) {
+    e.preventDefault();
+    if (!timerInterval) startTimer();
+    move(dir);
+  }
+});
+
+// Click on overlay to dismiss is not desired — only button works.
+// But unlock audio on any interaction:
+document.addEventListener('click', unlockAudio);
+
+// --- Init ---
+initBoard();
+</script>
+</body>
+</html>
